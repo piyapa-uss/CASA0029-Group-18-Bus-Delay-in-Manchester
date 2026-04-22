@@ -2,18 +2,372 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Stuck in Transit | Bus Delays in Manchester</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/style.css" />
 </head>
+
 <body>
-  <header>
-    <p>CASA0029 | Group 18</p>
-    <h1>Stuck in Transit</h1>
-    <h2>Understanding Bus Delays in Manchester</h2>
-    <p>
-      This project explores patterns of bus delay across Manchester and examines
-      how unreliable service shapes everyday urban mobility.
-    </p>
-  </header>
+  <!-- Right circular navigation: hidden on hero, appears after scroll -->
+  <div class="orb-nav hidden-on-hero">
+    <div class="orb-nav-inner">
+      <div class="orb-nav-title">Navigate</div>
+      <a class="orb-link home" href="#hero">Home</a>
+      <a class="orb-link overview" href="#overview">Overview</a>
+      <a class="orb-link accessibility" href="#accessibility">Access</a>
+      <a class="orb-link delay" href="#delay">Delay</a>
+      <a class="orb-link impact" href="#impact">Impact</a>
+      <a class="orb-link about" href="#about">About</a>
+    </div>
+  </div>
+
+  <main>
+    <!-- =========================
+      1. HERO / LANDING (PUK)
+    ========================== -->
+    <section id="hero" class="panel hero-panel">
+      <header class="hero-topbar">
+        <div class="brand">CASA0029 | Group 18</div>
+
+        <nav class="hero-nav">
+          <a href="#hero">Home</a>
+          <a href="#overview">Overview</a>
+          <a href="#accessibility">Accessibility</a>
+          <a href="#delay">Delay</a>
+          <a href="#impact">Impact</a>
+          <a href="#about">About</a>
+        </nav>
+      </header>
+
+      <div class="section-inner">
+        <p class="eyebrow">CASA0029 Urban Data Visualisation</p>
+        <h1>Stuck in Transit</h1>
+        <h2>Understanding Bus Delays in Manchester</h2>
+
+        <p class="intro">
+          This project explores patterns of bus delay across Manchester and examines
+          how unreliable service shapes everyday urban mobility.
+        </p>
+
+        <div class="hero-actions">
+          <a href="#overview" class="btn-primary">Enter the project</a>
+        </div>
+
+        <div class="placeholder-box large hero-visual-placeholder">
+          Puk: hero visual / mood graphic / background treatment goes here
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================
+      2. OVERVIEW / RESEARCH FRAMING (PUK)
+    ========================== -->
+    <section id="overview" class="panel">
+      <div class="section-inner">
+        <p class="section-label">01</p>
+        <h3>Overview / Research Framing</h3>
+        <p class="section-note">
+          This section introduces the project scope, explains why Manchester matters,
+          and frames the key questions that guide the rest of the website.
+        </p>
+
+        <div class="cards-2">
+          <div class="content-card">
+            <h4>Why Manchester?</h4>
+            <p>
+              Puk: short framing text on Manchester as a bus-reliant city and why bus reliability matters here.
+            </p>
+          </div>
+
+          <div class="content-card">
+            <h4>Project Scope</h4>
+            <p>
+              Puk: define study scale, transport focus, data scope, and what this project does and does not cover.
+            </p>
+          </div>
+        </div>
+
+        <div class="content-card section-block">
+          <h4>Research Questions</h4>
+          <ul>
+            <li>Where are bus delays concentrated across Manchester?</li>
+            <li>How does bus reliability vary across routes, stops, and time periods?</li>
+            <li>How might uneven delay exposure shape everyday mobility across the city?</li>
+          </ul>
+        </div>
+
+        <div class="content-card section-block">
+          <h4>Analytical Framework</h4>
+          <div class="placeholder-box">
+            Puk: conceptual workflow diagram goes here
+            <br />
+            accessibility → reliability → delay exposure → uneven mobility
+          </div>
+        </div>
+
+        <div class="content-card section-block">
+          <h4>What this website shows</h4>
+          <p>
+            This website moves from system-wide transport context to route-level reliability patterns,
+            before examining how delay exposure may be experienced unevenly across the city.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================
+      3. ACCESSIBILITY & BUS NETWORK CONTEXT (MING)
+    ========================== -->
+    <section id="accessibility" class="panel panel-dark">
+      <div class="section-inner">
+        <p class="section-label">02</p>
+        <h3>Accessibility & Bus Network Context</h3>
+        <p class="section-note">
+          This section situates buses within Manchester’s wider transport system and introduces
+          the network structure that underpins later delay analysis.
+        </p>
+
+        <div class="content-card section-block">
+          <h4>Manchester transport context</h4>
+          <p>
+            Puk: short introduction text for this section.
+          </p>
+        </div>
+
+        <div class="content-card section-block">
+          <h4>Macro accessibility map</h4>
+          <div id="accessibility-map" class="embed-shell large-shell">
+            Ming: map2 will render here
+          </div>
+        </div>
+
+        <div class="cards-2">
+          <div class="content-card">
+            <h4>Layer controls / network elements</h4>
+            <div id="accessibility-controls" class="embed-shell">
+              Ming: layer controls / network summary goes here
+            </div>
+          </div>
+
+          <div class="content-card">
+            <h4>2016–2026 comparison / mode composition</h4>
+            <div id="accessibility-sidepanel" class="embed-shell">
+              Ming: side panel / detail view goes here
+            </div>
+          </div>
+        </div>
+
+        <div class="content-card section-block">
+          <h4>Key takeaway</h4>
+          <p>
+            Puk + Ming: add 2–3 sentences summarising what the accessibility layer reveals.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================
+      4. DELAY & RELIABILITY DASHBOARD (MING)
+    ========================== -->
+    <section id="delay" class="panel">
+      <div class="section-inner">
+        <p class="section-label">03</p>
+        <h3>Delay & Reliability Dashboard</h3>
+        <p class="section-note">
+          This section examines how bus delays vary across the network, across time periods,
+          and across individual routes and stops.
+        </p>
+
+        <div class="cards-3 section-block">
+          <div class="content-card">
+            <div class="metric-label">Network mean delay</div>
+            <div class="metric-value" id="delay-kpi-1">--</div>
+          </div>
+
+          <div class="content-card">
+            <div class="metric-label">Worst route</div>
+            <div class="metric-value" id="delay-kpi-2">--</div>
+          </div>
+
+          <div class="content-card">
+            <div class="metric-label">Best route</div>
+            <div class="metric-value" id="delay-kpi-3">--</div>
+          </div>
+        </div>
+
+        <div class="content-card section-block">
+          <h4>Network overview</h4>
+          <div id="delay-dashboard" class="embed-shell large-shell">
+            Ming: map3 main dashboard renders here
+          </div>
+        </div>
+
+        <div class="cards-2">
+          <div class="content-card">
+            <h4>Period filters</h4>
+            <div id="delay-filters" class="embed-shell">
+              Ming: weekday / peak filters go here
+            </div>
+          </div>
+
+          <div class="content-card">
+            <h4>Route ranking</h4>
+            <div id="delay-ranking" class="embed-shell">
+              Ming: route league table goes here
+            </div>
+          </div>
+        </div>
+
+        <div class="cards-2 section-block">
+          <div class="content-card">
+            <h4>Route detail / drill-down</h4>
+            <div id="delay-route-detail" class="embed-shell">
+              Ming: selected route detail goes here
+            </div>
+          </div>
+
+          <div class="content-card">
+            <h4>Stop-level / temporal pattern</h4>
+            <div id="delay-chart" class="embed-shell">
+              Ming: scatter / heatmap / stop chart goes here
+            </div>
+          </div>
+        </div>
+
+        <div class="content-card section-block">
+          <h4>Key takeaway</h4>
+          <p>
+            Puk + Ming: add 2–3 sentences on how delay varies across routes, places, and time periods.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================
+      5. IMPACT / UNEVEN MOBILITY (JACOB)
+    ========================== -->
+    <section id="impact" class="panel">
+      <div class="section-inner">
+        <p class="section-label">04</p>
+        <h3>Impact / Uneven Mobility</h3>
+        <p class="section-note">
+          This section explores how delay exposure may be experienced unevenly across Manchester
+          and situates bus reliability within a wider socioeconomic context.
+        </p>
+
+        <div class="content-card section-block">
+          <h4>Section framing</h4>
+          <p>
+            Jacob: introduce mobility implications carefully without overclaiming causality.
+          </p>
+        </div>
+
+        <div class="cards-2">
+          <div class="content-card">
+            <h4>Mobility implications</h4>
+            <div id="impact-mobility" class="embed-shell">
+              Jacob: commute delay / travel time loss / accessibility burden content goes here
+            </div>
+          </div>
+
+          <div class="content-card">
+            <h4>Socioeconomic context</h4>
+            <div id="impact-socioeconomic" class="embed-shell">
+              Jacob: deprivation / vulnerability / socioeconomic background goes here
+            </div>
+          </div>
+        </div>
+
+        <div class="content-card section-block">
+          <h4>Overlay / comparison map</h4>
+          <div id="impact-map" class="embed-shell large-shell">
+            Jacob: choropleth / overlay map showing uneven exposure goes here
+          </div>
+        </div>
+
+        <div class="content-card section-block">
+          <h4>Key takeaway</h4>
+          <p>
+            Jacob + Puk: add 2–3 sentences summarising how delay exposure appears uneven across the city.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================
+      6. ABOUT / METHODOLOGY / DATA (ALL)
+    ========================== -->
+    <section id="about" class="panel">
+      <div class="section-inner">
+        <p class="section-label">05</p>
+        <h3>About / Methodology / Data</h3>
+        <p class="section-note">
+          This final section documents the project datasets, methods, tools, limitations,
+          and team contributions.
+        </p>
+
+        <div class="cards-2">
+          <div class="content-card">
+            <h4>Project summary</h4>
+            <p>
+              All: short summary of the project aim and overall approach.
+            </p>
+          </div>
+
+          <div class="content-card">
+            <h4>Datasets</h4>
+            <p>
+              All: list datasets used in the project and what each contributes.
+            </p>
+          </div>
+        </div>
+
+        <div class="cards-2 section-block">
+          <div class="content-card">
+            <h4>Methods</h4>
+            <p>
+              All: explain how the data were prepared, aggregated, analysed, and visualised.
+            </p>
+          </div>
+
+          <div class="content-card">
+            <h4>Tools & Libraries</h4>
+            <p>
+              All: e.g. Leaflet, Chart.js, GIS processing, JavaScript, GitHub Pages.
+            </p>
+          </div>
+        </div>
+
+        <div class="cards-2 section-block">
+          <div class="content-card">
+            <h4>Limitations</h4>
+            <p>
+              All: note missing data, assumptions, mock components, or unresolved constraints.
+            </p>
+          </div>
+
+          <div class="content-card">
+            <h4>Team contributions & AI use</h4>
+            <p>
+              All: summarise who worked on what and where AI tools were used.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Global -->
+  <script src="js/main.js"></script>
+
+  <!-- Section-specific -->
+  <script src="js/accessibility.js"></script>
+  <script src="js/delay.js"></script>
+  <script src="js/impact.js"></script>
 </body>
 </html>
