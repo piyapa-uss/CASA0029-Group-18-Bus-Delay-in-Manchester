@@ -122,6 +122,15 @@ function renderMacroAccessibilityMap(container) {
           <span id="gmal-h-val">1.0×</span>
         </div>
       </div>
+
+      <div class="gmal-ctrl-sep"></div>
+
+      <div class="gmal-ctrl-group">
+        <label>View</label>
+        <button class="gmal-btn" id="gmal-fs-btn" title="Toggle fullscreen" aria-label="Toggle fullscreen">
+          <span id="gmal-fs-icon">⛶</span>&nbsp;<span id="gmal-fs-label">Fullscreen</span>
+        </button>
+      </div>
     </div>
 
     <div class="gmal-panel" id="gmal-level-legend">
@@ -222,8 +231,8 @@ function bootGmal3DMap(root) {
 
   async function loadData() {
     const [d16, d26] = await Promise.all([
-      fetch("data_raw/accessibility/gmal_2016.json").then(r => r.json()),
-      fetch("data_raw/accessibility/gmal_2026.json").then(r => r.json()),
+      fetch("data/accessibility/gmal_2016.json").then(r => r.json()),
+      fetch("data/accessibility/gmal_2026.json").then(r => r.json()),
     ]);
     DATA["2016"]  = d16.data;  STATS["2016"] = d16.stats;
     DATA["2026"]  = d26.data;  STATS["2026"] = d26.stats;
@@ -329,7 +338,7 @@ function bootGmal3DMap(root) {
       await loadData();
     } catch (err) {
       console.error("[accessibility] Failed to load GMAL JSON:", err);
-      $("gmal-loading").innerHTML = `<h2>Data failed to load</h2><p>Check data_raw/accessibility/gmal_*.json</p>`;
+      $("gmal-loading").innerHTML = `<h2>Data failed to load</h2><p>Check data/accessibility/gmal_*.json</p>`;
       return;
     }
 
@@ -450,6 +459,33 @@ function bootGmal3DMap(root) {
   root.querySelectorAll("[data-mode]").forEach(btn =>
     btn.addEventListener("click", () => setMode(btn.dataset.mode)));
   $("gmal-h-slider").addEventListener("input", (e) => setHeight(e.target.value));
+
+  // ---- Fullscreen ----
+  function isFullscreen() {
+    const el = document.fullscreenElement || document.webkitFullscreenElement;
+    return el === root;
+  }
+  function enterFullscreen() {
+    const fn = root.requestFullscreen || root.webkitRequestFullscreen;
+    if (fn) fn.call(root);
+  }
+  function exitFullscreen() {
+    const fn = document.exitFullscreen || document.webkitExitFullscreen;
+    if (fn) fn.call(document);
+  }
+  function syncFsUi() {
+    const fs = isFullscreen();
+    root.classList.toggle("gmal-fs", fs);
+    $("gmal-fs-icon").textContent  = fs ? "⤫" : "⛶";
+    $("gmal-fs-label").textContent = fs ? "Exit"  : "Fullscreen";
+    // Resize map + deck after layout settles
+    setTimeout(() => { if (map) map.resize(); }, 60);
+  }
+  $("gmal-fs-btn").addEventListener("click", () => {
+    isFullscreen() ? exitFullscreen() : enterFullscreen();
+  });
+  document.addEventListener("fullscreenchange", syncFsUi);
+  document.addEventListener("webkitfullscreenchange", syncFsUi);
 }
 
 // -------------------------------
@@ -463,6 +499,20 @@ function injectGmalStyles() {
     .gmal-3d-shell { background: #0d1117; border-radius: 14px; }
     .gmal-3d-shell #gmal-map         { position: absolute; inset: 0; border-radius: 14px; }
     .gmal-3d-shell #gmal-deck-canvas { position: absolute; inset: 0; pointer-events: none; }
+
+    /* Fullscreen state — fill the entire screen, drop rounded corners */
+    .gmal-3d-shell:fullscreen,
+    .gmal-3d-shell.gmal-fs {
+      width: 100vw !important;
+      height: 100vh !important;
+      min-height: 100vh !important;
+      border-radius: 0 !important;
+      border: 0 !important;
+    }
+    .gmal-3d-shell:fullscreen #gmal-map,
+    .gmal-3d-shell.gmal-fs #gmal-map,
+    .gmal-3d-shell:fullscreen #gmal-loading,
+    .gmal-3d-shell.gmal-fs #gmal-loading { border-radius: 0; }
 
     .gmal-3d-shell #gmal-controls {
       position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
