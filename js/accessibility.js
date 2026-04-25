@@ -74,17 +74,24 @@ function renderMacroAccessibilityMap(container) {
   container.innerHTML = `
     <div id="gmal-loading">
       <div class="gmal-spinner"></div>
-      <h2>GMAL 3D Map</h2>
+      <h2>Greater Manchester Accessibility Levels</h2>
       <p>Loading Greater Manchester Accessibility data…</p>
     </div>
 
     <div id="gmal-map"></div>
     <canvas id="gmal-deck-canvas"></canvas>
 
-    <div id="gmal-controls">
-      <div class="gmal-ctrl-title">GMAL <span>3D</span> &nbsp;·&nbsp; Greater Manchester</div>
-      <div class="gmal-ctrl-sep"></div>
+    <div class="gmal-panel" id="gmal-info">
+      <h4>Greater Manchester Accessibility Levels</h4>
+      <p class="gmal-info-desc">Higher values indicate higher accessibility.</p>
+      <p class="gmal-info-src">
+        Source:
+        <a href="https://www.data.gov.uk/dataset/d9dfbf0a-3cd7-4b12-a39f-0ec717423ee4/gm-accessibility-levels"
+           target="_blank" rel="noopener">Transport for Greater Manchester</a>
+      </p>
+    </div>
 
+    <div id="gmal-controls">
       <div class="gmal-ctrl-group">
         <label>Year</label>
         <div class="gmal-btn-row">
@@ -98,10 +105,11 @@ function renderMacroAccessibilityMap(container) {
       <div class="gmal-ctrl-group">
         <label>Metric</label>
         <div class="gmal-btn-row">
-          <button class="gmal-btn active" id="gmal-btn-overall" data-mode="overall">Overall</button>
-          <button class="gmal-btn"        id="gmal-btn-bus"     data-mode="bus">Bus</button>
-          <button class="gmal-btn"        id="gmal-btn-rail"    data-mode="rail">Rail</button>
-          <button class="gmal-btn"        id="gmal-btn-metro"   data-mode="metro">Metro</button>
+          <button class="gmal-btn active" id="gmal-btn-overall"   data-mode="overall">Overall</button>
+          <button class="gmal-btn"        id="gmal-btn-bus"       data-mode="bus">Bus</button>
+          <button class="gmal-btn"        id="gmal-btn-rail"      data-mode="rail">Rail</button>
+          <button class="gmal-btn"        id="gmal-btn-metro"     data-mode="metro">Metro</button>
+          <button class="gmal-btn"        id="gmal-btn-locallink" data-mode="locallink">Local Link</button>
         </div>
       </div>
 
@@ -264,9 +272,10 @@ function bootGmal3DMap(root) {
 
   function getData()    { return DATA[currentYear]; }
   function getScore(d)  {
-    if (currentMode === "bus")   return d[4];
-    if (currentMode === "rail")  return d[5];
-    if (currentMode === "metro") return d[6];
+    if (currentMode === "bus")       return d[4];
+    if (currentMode === "rail")      return d[5];
+    if (currentMode === "metro")     return d[6];
+    if (currentMode === "locallink") return d[7];
     return d[2];
   }
   function getColor(d) {
@@ -379,10 +388,11 @@ function bootGmal3DMap(root) {
       <span class="gmal-tt-badge" style="background:${BADGE_BG[lv]||"#555"}">
         Level ${lv} &ndash; ${LEVEL_NAMES[lv] || "?"}
       </span>
-      <div class="gmal-tt-row"><span class="gmal-tt-k">GMAL Score</span>  <span class="gmal-tt-v">${d[2].toFixed(2)}</span></div>
-      <div class="gmal-tt-row"><span class="gmal-tt-k">Bus Score</span>   <span class="gmal-tt-v">${d[4].toFixed(2)}</span></div>
-      <div class="gmal-tt-row"><span class="gmal-tt-k">Rail Score</span>  <span class="gmal-tt-v">${d[5].toFixed(2)}</span></div>
-      <div class="gmal-tt-row"><span class="gmal-tt-k">Metro Score</span> <span class="gmal-tt-v">${d[6].toFixed(2)}</span></div>
+      <div class="gmal-tt-row"><span class="gmal-tt-k">GMAL Score</span>       <span class="gmal-tt-v">${d[2].toFixed(2)}</span></div>
+      <div class="gmal-tt-row"><span class="gmal-tt-k">Bus Score</span>        <span class="gmal-tt-v">${d[4].toFixed(2)}</span></div>
+      <div class="gmal-tt-row"><span class="gmal-tt-k">Rail Score</span>       <span class="gmal-tt-v">${d[5].toFixed(2)}</span></div>
+      <div class="gmal-tt-row"><span class="gmal-tt-k">Metro Score</span>      <span class="gmal-tt-v">${d[6].toFixed(2)}</span></div>
+      <div class="gmal-tt-row"><span class="gmal-tt-k">Local Link Score</span> <span class="gmal-tt-v">${(d[7] ?? 0).toFixed(2)}</span></div>
     `;
   }
 
@@ -411,13 +421,18 @@ function bootGmal3DMap(root) {
 
   function setMode(mode) {
     currentMode = mode;
-    ["overall","bus","rail","metro"].forEach(m =>
+    ["overall","bus","rail","metro","locallink"].forEach(m =>
       $("gmal-btn-"+m).classList.toggle("active", m === mode));
     const isOverall = mode === "overall";
     $("gmal-level-legend").style.display = isOverall ? "" : "none";
     $("gmal-grad-legend").style.display  = isOverall ? "none" : "";
     if (!isOverall) {
-      const labels = { bus: "Bus Score", rail: "Rail Score", metro: "Metro Score" };
+      const labels = {
+        bus: "Bus Score",
+        rail: "Rail Score",
+        metro: "Metro Score",
+        locallink: "Local Link Score",
+      };
       $("gmal-grad-title").textContent = labels[mode];
     }
     redraw();
@@ -486,6 +501,16 @@ function injectGmalStyles() {
     }
     .gmal-3d-shell .gmal-panel h4 { font-size: 9px; color: #8b949e; text-transform: uppercase; letter-spacing: .9px; margin: 0 0 9px; }
 
+    .gmal-3d-shell #gmal-info { top: 16px; left: 16px; max-width: 240px; }
+    .gmal-3d-shell #gmal-info h4 {
+      font-size: 12px; color: #e6edf3; text-transform: none;
+      letter-spacing: 0; font-weight: 700; margin: 0 0 6px;
+    }
+    .gmal-3d-shell .gmal-info-desc { font-size: 11px; color: #c9d1d9; margin: 0 0 6px; line-height: 1.4; }
+    .gmal-3d-shell .gmal-info-src  { font-size: 10px; color: #8b949e; margin: 0; line-height: 1.4; }
+    .gmal-3d-shell .gmal-info-src a { color: #58a6ff; text-decoration: none; }
+    .gmal-3d-shell .gmal-info-src a:hover { text-decoration: underline; }
+
     .gmal-3d-shell #gmal-level-legend { bottom: 16px; left: 16px; }
     .gmal-3d-shell .gmal-lgd-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
     .gmal-3d-shell .gmal-lgd-box { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
@@ -498,7 +523,7 @@ function injectGmalStyles() {
     }
     .gmal-3d-shell .gmal-grad-labels { display: flex; justify-content: space-between; font-size: 9px; color: #8b949e; }
 
-    .gmal-3d-shell #gmal-stats-panel { bottom: 16px; right: 16px; min-width: 175px; }
+    .gmal-3d-shell #gmal-stats-panel { bottom: 44px; right: 16px; min-width: 175px; }
     .gmal-3d-shell .gmal-stat-row { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 4px; }
     .gmal-3d-shell .gmal-stat-k { font-size: 10px; color: #8b949e; }
     .gmal-3d-shell .gmal-stat-v { font-size: 10px; color: #e6edf3; font-weight: 700; }
