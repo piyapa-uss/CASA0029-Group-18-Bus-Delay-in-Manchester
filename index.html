@@ -31,6 +31,11 @@
       1. HERO / LANDING (PUK)
     ========================== -->
     <section id="hero" class="panel hero-panel">
+      <!-- Background layers -->
+      <div class="hero-bg"></div>
+      <div class="hero-overlay"></div>
+
+      <!-- Content -->
       <header class="hero-topbar">
         <div class="brand">CASA0029 | Group 18</div>
 
@@ -44,69 +49,112 @@
         </nav>
       </header>
 
-      <div class="section-inner">
-        <p class="eyebrow">CASA0029 Urban Data Visualisation</p>
-        <h1>Stuck in Transit</h1>
-        <h2>Understanding Bus Delays in Manchester</h2>
-
-        <p class="intro">
-          This project explores patterns of bus delay across Manchester and examines
-          how unreliable service shapes everyday urban mobility.
+      <div class="hero-content">
+        <p class="eyebrow hero-animate hero-delay-1">
+          CASA0029 Urban Data Visualisation
         </p>
 
-        <div class="hero-actions">
-          <a href="#overview" class="btn-primary">Enter the Project</a>
-        </div>
+        <h1 class="hero-title">
+          <span class="title-line stuck-word">
+            Stuck <span class="orange-word">in</span>
+          </span>
+          <span class="title-line transit-word">Transit</span>
+        </h1>
 
-        <div class="placeholder-box large hero-visual-placeholder">
-          Puk: hero visual / mood graphic / background treatment goes here
+        <h2 class="hero-subtitle hero-animate hero-delay-3">
+          Understanding Bus Delays in Manchester
+        </h2>
+
+        <p class="intro hero-copy hero-animate hero-delay-4">
+          This project investigates bus delay and reliability across Greater Manchester,
+          asking where delays occur, how they vary across the network, and how unreliable
+          service may shape everyday mobility.
+        </p>
+
+        <div class="hero-actions hero-animate hero-delay-5">
+          <a href="#overview" class="btn-primary">Enter the project</a>
         </div>
+      </div>
+
+      <div class="scroll-cue hero-animate hero-delay-6">
+        <span></span>
+        <p>Scroll to explore</p>
       </div>
     </section>
 
     <!-- =========================
       2. OVERVIEW / RESEARCH FRAMING (PUK)
     ========================== -->
-    <section id="overview" class="panel">
-      <div class="section-inner">
+    <section id="overview" class="panel overview-panel">
+      <div class="section-inner overview-inner">
         <p class="section-label">01</p>
         <h3>Overview / Research Framing</h3>
         <p class="section-note">
-          This section introduces the project scope, explains why Manchester matters,
-          and frames the key questions that guide the rest of the website.
+          This section frames the project as an urban analytics story: from transport access,
+          to delay patterns, to uneven mobility across Greater Manchester.
         </p>
 
-        <div class="cards-2">
-          <div class="content-card">
+        <!-- WHY MANCHESTER -->
+        <div class="overview-hero-card">
+          <div class="overview-stat">
+            <span class="stat-number">Bus</span>
+            <span class="stat-label">as everyday urban infrastructure</span>
+          </div>
+
+          <div class="overview-stat-text">
             <h4>Why Manchester?</h4>
             <p>
-              Puk: short framing text on Manchester as a bus-reliant city and why bus reliability matters here.
-            </p>
-          </div>
-
-          <div class="content-card">
-            <h4>Project Scope</h4>
-            <p>
-              Puk: define study scale, transport focus, data scope, and what this project does and does not cover.
+              Greater Manchester is a major UK city-region where buses support everyday access
+              to work, education, services, and social life. When services become unreliable,
+              delay is not only a transport issue: it becomes a question of who can move
+              through the city easily, and who cannot.
             </p>
           </div>
         </div>
 
-        <div class="content-card section-block">
+        <!-- PROJECT SCOPE -->
+        <div class="scope-grid">
+          <div class="scope-chip">
+            <span>Scale</span>
+            <strong>Greater Manchester + LSOA</strong>
+          </div>
+          <div class="scope-chip">
+            <span>Focus</span>
+            <strong>Bus accessibility, delay, reliability</strong>
+          </div>
+          <div class="scope-chip">
+            <span>Interpretation</span>
+            <strong>Spatial overlap, not direct causality</strong>
+          </div>
+        </div>
+
+        <!-- RESEARCH QUESTIONS -->
+        <div class="content-card section-block rq-card">
           <h4>Research Questions</h4>
-          <ul>
-            <li>Where are bus delays concentrated across Manchester?</li>
-            <li>How does bus reliability vary across routes, stops, and time periods?</li>
-            <li>How might uneven delay exposure shape everyday mobility across the city?</li>
-          </ul>
-        </div>
 
-        <div class="content-card section-block">
-          <h4>Analytical Framework</h4>
-          <div class="placeholder-box">
-            Puk: conceptual workflow diagram goes here
-            <br />
-            accessibility → reliability → delay exposure → uneven mobility
+          <div class="rq-layout">
+            <button class="rq-item active" data-rq="delay">
+              <span>01</span>
+              Where are delays concentrated?
+            </button>
+
+            <button class="rq-item" data-rq="reliability">
+              <span>02</span>
+              How does reliability vary?
+            </button>
+
+            <button class="rq-item" data-rq="inequality">
+              <span>03</span>
+              Where does vulnerability overlap?
+            </button>
+
+            <div class="rq-explanation" id="rq-explanation">
+              <h5>Where are delays concentrated?</h5>
+              <p>
+                We first locate delay hotspots across the bus network to understand where
+                unreliable service is most visible within Greater Manchester.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -116,6 +164,66 @@
             This website moves from system-wide transport context to route-level reliability patterns,
             before examining how delay exposure may be experienced unevenly across the city.
           </p>
+        <!-- ANALYTICAL FRAMEWORK -->
+        <div class="content-card section-block framework-card">
+          <h4>Analytical Framework</h4>
+
+          <div class="framework-flow">
+            <div class="framework-step">
+              <span>01</span>
+              <strong>Accessibility</strong>
+              <p>Where can people reach?</p>
+            </div>
+
+            <div class="flow-arrow">→</div>
+
+            <div class="framework-step">
+              <span>02</span>
+              <strong>Reliability</strong>
+              <p>How dependable is the service?</p>
+            </div>
+
+            <div class="flow-arrow">→</div>
+
+            <div class="framework-step">
+              <span>03</span>
+              <strong>Delay Patterns</strong>
+              <p>Where and when does delay occur?</p>
+            </div>
+
+            <div class="flow-arrow">→</div>
+
+            <div class="framework-step">
+              <span>04</span>
+              <strong>Uneven Mobility</strong>
+              <p>Who may experience greater burden?</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- WEBSITE JOURNEY -->
+        <div class="journey-card">
+          <h4>What this website shows</h4>
+
+          <div class="journey-grid">
+            <a href="#accessibility" class="journey-step">
+              <span>Step 1</span>
+              <strong>Understand the network</strong>
+              <p>Start with city-wide accessibility and transport context.</p>
+            </a>
+
+            <a href="#delay" class="journey-step">
+              <span>Step 2</span>
+              <strong>Explore delay patterns</strong>
+              <p>Move into route-level and stop-level reliability analysis.</p>
+            </a>
+
+            <a href="#impact" class="journey-step">
+              <span>Step 3</span>
+              <strong>Reveal uneven mobility</strong>
+              <p>Compare delay exposure with socioeconomic vulnerability.</p>
+            </a>
+          </div>
         </div>
       </div>
     </section>
