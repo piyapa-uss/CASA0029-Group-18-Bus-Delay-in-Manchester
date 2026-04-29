@@ -14,6 +14,7 @@ async function initImpactSection() {
   renderImpactMap(mapEl);
 
   await loadMapboxAssets(); //wait until mapbox assets are loaded before initializing map
+  await loadChartAssets(); //wait until chart assets are loaded before initializing charts
 
   mapboxgl.accessToken = "pk.eyJ1IjoiamFjb2JlY2hlbGUiLCJhIjoiY21rbWw5d2tlMGpqZjNjcjJxNGQ4aWIyOCJ9.4MTt2ZvJTS94BZmLwdhQsA"; //set access token for mapbox
 
@@ -31,26 +32,42 @@ setTimeout(() => {
   impactMap.resize();
 }, 100);
 
-const hoverInfo = document.getElementById("impact-hover-info"); //get hover info element to update with LSOA statistics on hover
+window.addEventListener("resize", () => {
+  impactMap.resize();
+});
 
-impactMap.on("load", () => {
+const hoverInfo = document.getElementById("impact-hover-info"); //get hover info element to update with LSOA statistics on hover
+const stopDelayData = await loadCSV("data_raw/gm/impact_stop_delays.csv"); //load stop delay data for histogram, this is a separate CSV from the geojson used for the map to allow for more detailed delay distribution data at stop level
+
+const lsoaResponse = await fetch("data_raw/gm/impact_lsoa.geojson"); //load in geojson but as normal JS data
+const lsoaGeojson = await lsoaResponse.json();
+
+const allLsoaDelays = lsoaGeojson.features //extracts average delay values for all LSOAs to use in system comparison chart, filters out NAs to prevent issues with chart
+  .map(feature => Number(feature.properties["avg_delay.x"]))
+  .filter(value => !Number.isNaN(value));
+
+const charts = createImpactCharts(allLsoaDelays); //creates charts and passes in all LSOA delay data to system comparison chart, this function is called here to ensure charts are created before map hover events try to update them
+
+function addLsoaLayer() {
   impactMap.resize();
 
+  //add source data for LSOA polygons
   impactMap.addSource("lsoa-data", {
     type: "geojson",
-    data: "data_raw/gm/impact_lsoa.geojson"
+    data: lsoaGeojson
   });
 
-impactMap.addLayer({ //add delay layer, filling LSOA polygons with color based on average delay
-  id: "lsoa-delay-fill",
-  type: "fill",
-  source: "lsoa-data",
-  paint: {
+  //choropleth layer showing delay intensity by LSOA
+  impactMap.addLayer({
+    id: "lsoa-delay-fill",
+    type: "fill",
+    source: "lsoa-data",
+    paint: {
       "fill-color": [
         "step",
-        ["min", ["coalesce", ["get", "avg_delay.x"], -1], 12], //colors all values above 12min the same as 12, prevent extreme outliers from dominating color scheme, coalesce treats NAs as -1 so they can be colored separately
+        ["min", ["coalesce", ["get", "avg_delay.x"], -1], 12],
 
-        "#E0E0E0",  //fills NAs with light gray to reduce clutter but not ignore
+        "#E0E0E0",  //no data
 
         0, "#F6F7F1",
         2, "#f7d8d4",
@@ -58,20 +75,28 @@ impactMap.addLayer({ //add delay layer, filling LSOA polygons with color based o
         6, "#f0625d",
         8, "#eb4e43"
       ],
-    "fill-opacity": 0.65
-  }
-});
+      "fill-opacity": 0.65
+    }
+  });
 
-impactMap.addLayer({ //thin border layer to outline LSOA boundaries improving readability of map
-  id: "lsoa-deprivation-outline",
-  type: "line",
-  source: "lsoa-data",
-  paint: {
-    "line-color": "#A5A5A1",
-    "line-width": 0.5,
-    "line-opacity": 0.5
-  }
-});
+  // outline layer
+  impactMap.addLayer({
+    id: "lsoa-deprivation-outline",
+    type: "line",
+    source: "lsoa-data",
+    paint: {
+      "line-color": "#A5A5A1",
+      "line-width": 0.5,
+      "line-opacity": 0.5
+    }
+  });
+}
+
+if (impactMap.loaded()) {
+  addLsoaLayer();
+} else {
+  impactMap.on("load", addLsoaLayer);
+}
 
 //reacts to mouse movement from whole map, not just when hovering over LSOA polygons, allows for hover info to update when moving on and off polygons without needing to move mouse
 impactMap.on("mousemove", (e) => { 
@@ -94,9 +119,30 @@ impactMap.on("mousemove", (e) => {
     | Deprivation Score: ${properties.index_of_multiple_deprivation_imd_score != null ? Number(properties.index_of_multiple_deprivation_imd_score).toFixed(2) : "No data"}
     | Deprivation Percentile: ${properties.deprivation_percentile != null ? Number(properties.deprivation_percentile).toFixed(2) : "No data"}%
   `;
-});
 
-});
+  //update histogram and system comparison chart with delay distribution for selected LSOA
+  const selectedLsoa = properties.lsoa21cd;
+
+  const selectedStopDelays = stopDelayData
+    .filter(row => row.lsoa21cd === selectedLsoa) //filters stop delay data to only include stops within selected LSOA
+    .map(row => Number(row.mean_delay)) //converts delay values to numbers for use in histogram 
+    .filter(value => !Number.isNaN(value)); //filters out NAs to prevent issues with charts
+
+  const bins = buildDelayBins(selectedStopDelays);
+
+  charts.histogramChart.data.labels = bins.labels;
+  charts.histogramChart.data.datasets[0].data = bins.counts;
+  charts.histogramChart.update(); //updates histogram with new data for selected LSOA
+
+  const selectedDelay = Number(properties["avg_delay.x"]); //gets average delay for selected LSOA to plot on system comparison chart
+
+  charts.systemChart.data.datasets[1].data = [{ //updates system comparison chart to plot selected LSOA against all LSOAs, x position is average delay and y position is arbitrary to spread points out, only one point for selected LSOA which is highlighted in red
+    x: selectedDelay,
+    y: 4
+  }];
+
+  charts.systemChart.update(); //updates system comparison chart with new data for selected LSOA
+  });
 
 }
 
@@ -186,6 +232,21 @@ function loadMapboxAssets() { //calls function before loading map to ensure asse
   });
 }
 
+function loadChartAssets() { //calls function before loading charts to ensure assets are ready
+  return new Promise((resolve, reject) => { //tells JS to wait until assets are loaded before continuing
+    if (window.Chart) { //ensures chart.js is only loaded once, if already loaded it just exits the function
+      resolve();
+      return;
+    }
+
+    const script = document.createElement("script"); //load chart.js from CDN, allows for charts to be created without editing index.html file, also ensures charts are only loaded when impact section is initialized
+    script.src = "https://cdn.jsdelivr.net/npm/chart.js"; //load chart.js library
+    script.onload = resolve;
+    script.onerror = reject;
+    document.body.appendChild(script);
+  });
+}
+
 function renderImpactMap(container) {
   container.innerHTML = `
     <div class="impact-map-wrapper">
@@ -219,11 +280,148 @@ function renderImpactMap(container) {
         Hover over LSOA to see statistics
       </div>
 
-      <div 
-        id="impact-map-canvas" class="impact-map-canvas"
-      ></div>
+      <div class="impact-visual-row">
+        <div id="impact-map-canvas" class="impact-map-canvas"></div>
+
+        <div class="impact-chart-panel">
+          <div class="impact-chart-card">
+            <h5>Delay Buckets in Selected LSOA</h5>
+            <canvas id="lsoa-delay-histogram"></canvas>
+          </div>
+
+          <div class="impact-chart-card">
+            <h5>Selected LSOA vs System</h5>
+            <canvas id="system-delay-comparison"></canvas>
+          </div>
+        </div>
+      </div>
     </div>
   `;
+}
+
+// load CSV function to read in stop delay data for histogram and convert to JS objects
+async function loadCSV(path) {
+  const response = await fetch(path);
+  const text = await response.text();
+
+  const rows = text.trim().split("\n");
+  const headers = rows[0].split(",");
+
+  return rows.slice(1).map(row => {
+    const values = row.split(",");
+    const obj = {};
+
+    headers.forEach((header, index) => {
+      obj[header] = values[index];
+    });
+
+    return obj;
+  });
+}
+
+// function to create delay bins for histogram, takes in array of delay values and counts how many fall into each bin, returns object with bin labels and counts for each bin
+function buildDelayBins(values) {
+  const binLabels = ["0-2min", "2-5min", "5-10min", "10+min"];
+  const binCounts = [0, 0, 0, 0];
+
+  values.forEach(value => {
+    if (value >= 0 && value < 2) {
+      binCounts[0]++;
+    } else if (value >= 2 && value < 5) {
+      binCounts[1]++;
+    } else if (value >= 5 && value < 10) {
+      binCounts[2]++;
+    } else if (value >= 10) {
+      binCounts[3]++;
+    }
+  });
+
+  return {
+    labels: binLabels,
+    counts: binCounts
+  };
+}
+
+ // creates histogram and system comparison charts using chart.js
+function createImpactCharts(allLsoaDelays) {
+  const histogramCanvas = document.getElementById("lsoa-delay-histogram");
+  const systemCanvas = document.getElementById("system-delay-comparison");
+
+  const histogramChart = new Chart(histogramCanvas, {
+    type: "bar",
+    data: {
+      labels: ["0-2min", "2-5min", "5-10min", "10+min"],
+      datasets: [{
+        label: "Number of stops",
+        data: [0, 0, 0, 0],
+        backgroundColor: "#FD4B49"
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { precision: 0 }
+        }
+      }
+    }
+  });
+
+  const systemChart = new Chart(systemCanvas, {
+    type: "scatter",
+    data: {
+      datasets: [
+        {
+          label: "All LSOAs",
+          data: allLsoaDelays.map((delay, index) => ({
+            x: delay,
+            y: index % 8
+          })),
+          pointRadius: 2,
+          backgroundColor: "#A5A5A1"
+        },
+        {
+          label: "Selected LSOA",
+          data: [],
+          pointRadius: 7,
+          backgroundColor: "#FD4B49"
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { //custom tooltip to show average delay value when hovering over selected LSOA point, legend is hidden since we have a custom legend in the HTML
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return `Average delay: ${context.parsed.x.toFixed(2)} mins`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: "Average delay (mins)"
+          }
+        },
+        y: {
+          display: false
+        }
+      }
+    }
+  });
+
+  return {
+    histogramChart: histogramChart,
+    systemChart: systemChart
+  };
 }
 
 // -------------------------------
@@ -231,6 +429,3 @@ function renderImpactMap(container) {
 // -------------------------------
 initImpactSection(); //calls function to load mapbox assets before rendering map, ensures map is ready when section is initialized
 
-window.addEventListener("resize", () => {
-  impactMap.resize();
-});
