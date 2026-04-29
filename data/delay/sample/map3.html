@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GM Bus Delay Dashboard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-primary:   #ffffff;
+  --bg-secondary: #f5f5f0;
+  --bg-tertiary:  #eeebe3;
+  --text-primary:   #1a1a18;
+  --text-secondary: #5f5e5a;
+  --text-tertiary:  #88877f;
+  --border-light:  rgba(90,88,80,0.13);
+  --border-mid:    rgba(90,88,80,0.26);
+  --border-strong: rgba(90,88,80,0.40);
+  --success-bg: #eaf3de; --success-fg: #3b6d11;
+  --warning-bg: #faeeda; --warning-fg: #854f0b;
+  --danger-bg:  #fcebeb; --danger-fg:  #a32d2d;
+  --radius-sm: 6px; --radius-md: 8px; --radius-lg: 12px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary:   #1e1e1b;
+    --bg-secondary: #28281f;
+    --bg-tertiary:  #111110;
+    --text-primary:   #f0ede6;
+    --text-secondary: #9e9d95;
+    --text-tertiary:  #6a6960;
+    --border-light:  rgba(200,195,180,0.10);
+    --border-mid:    rgba(200,195,180,0.20);
+    --border-strong: rgba(200,195,180,0.34);
+    --success-bg: #173404; --success-fg: #c0dd97;
+    --warning-bg: #412402; --warning-fg: #fac775;
+    --danger-bg:  #501313; --danger-fg:  #f7c1c1;
+  }
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 15px; line-height: 1.6;
+  background: var(--bg-tertiary); color: var(--text-primary);
+  min-height: 100vh;
+}
+.shell { max-width: 980px; margin: 0 auto; padding: 24px 16px 56px; }
+
+/* ── header ── */
+.hdr { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:8px; }
+.hdr h1 { font-size:18px; font-weight:500; }
+.hdr-sub { font-size:12px; color:var(--text-secondary); margin-top:2px; }
+
+/* ── tabs ── */
+.tab-bar { display:flex; align-items:center; gap:4px; border-bottom:0.5px solid var(--border-light); padding-bottom:10px; margin-bottom:16px; flex-wrap:wrap; }
+.tab { padding:6px 14px; border-radius:var(--radius-md); border:none; background:transparent; cursor:pointer; font-size:13px; font-weight:500; color:var(--text-secondary); transition:background .12s; }
+.tab.on { background:var(--bg-secondary); color:var(--text-primary); }
+.tab.dim { opacity:.38; cursor:default; pointer-events:none; }
+.breadcrumb { margin-left:auto; font-size:11px; color:var(--text-tertiary); }
+
+/* ── period pills ── */
+.period-bar { display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin-bottom:14px; }
+.ptab { padding:5px 12px; border-radius:20px; border:0.5px solid var(--border-mid); background:transparent; cursor:pointer; font-size:12px; font-weight:500; color:var(--text-secondary); white-space:nowrap; transition:all .12s; }
+.ptab.on { background:var(--bg-secondary); color:var(--text-primary); border-color:transparent; }
+
+/* ── metric cards ── */
+.kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-bottom:14px; }
+@media(max-width:560px){ .kpi-grid{grid-template-columns:repeat(2,1fr);} }
+.mc { background:var(--bg-secondary); border-radius:var(--radius-md); padding:10px 12px; min-width:0; }
+.mc-lbl { font-size:11px; color:var(--text-secondary); margin-bottom:3px; }
+.mc-val { font-size:20px; font-weight:500; color:var(--text-primary); }
+.mc-val.sm { font-size:13px; line-height:1.5; }
+
+/* ── network layout ── */
+.net-layout { display:grid; grid-template-columns:1fr 260px; gap:10px; align-items:start; }
+@media(max-width:640px){ .net-layout{grid-template-columns:1fr;} }
+
+/* ── map ── */
+#mapN, #mapR { width:100%; border-radius:var(--radius-lg); border:0.5px solid var(--border-mid); overflow:hidden; }
+#mapN { height:310px; }
+#mapR { height:220px; margin-bottom:14px; }
+.map-note { font-size:11px; color:var(--text-tertiary); margin-bottom:4px; }
+.leaflet-container { background:#e8e3d9; }
+.leaflet-control-zoom a { background:var(--bg-primary)!important; color:var(--text-primary)!important; border-color:var(--border-mid)!important; }
+.ltt { background:var(--bg-primary)!important; border:0.5px solid var(--border-light)!important; border-radius:5px!important; padding:3px 8px!important; font-size:11px!important; color:var(--text-primary)!important; box-shadow:none!important; white-space:nowrap; line-height:1.5; }
+.ltt::before { display:none!important; }
+
+/* ── map toolbar ── */
+.map-toolbar { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:7px; }
+.map-legend { display:flex; gap:12px; flex-wrap:wrap; }
+.leg-item { font-size:11px; color:var(--text-secondary); display:flex; align-items:center; gap:4px; }
+.leg-line { width:22px; height:3px; border-radius:2px; display:inline-block; flex-shrink:0; }
+
+/* ── LSOA toggle ── */
+.lsoa-btn { padding:4px 11px; border-radius:20px; border:0.5px solid var(--border-mid); background:transparent; cursor:pointer; font-size:11px; font-weight:500; color:var(--text-secondary); transition:all .15s; white-space:nowrap; margin-left:auto; }
+.lsoa-btn.on { background:var(--bg-secondary); color:var(--text-primary); border-color:var(--border-strong); }
+
+/* ── LSOA gradient legend ── */
+.lsoa-legend { display:none; align-items:center; gap:8px; margin-top:6px; flex-wrap:wrap; }
+.lsoa-grad { width:110px; height:7px; border-radius:4px; background:linear-gradient(to right,#5DCAA5,#EF9F27,#E24B4A,#8B1A1A); flex-shrink:0; }
+.lsoa-leg-lbl { font-size:11px; color:var(--text-secondary); }
+
+/* ── LSOA info panel ── */
+.lsoa-info { display:none; margin-top:8px; padding:10px 14px; border-radius:var(--radius-md); background:var(--bg-secondary); border-left:3px solid #EF9F27; }
+.lsoa-info-head { font-size:11px; color:var(--text-secondary); margin-bottom:5px; }
+.lsoa-info-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; }
+.lsoa-info-cell .label { font-size:10px; color:var(--text-tertiary); }
+.lsoa-info-cell .value { font-size:14px; font-weight:500; color:var(--text-primary); }
+
+/* ── league ── */
+.league-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.sort-sel { font-size:11px; border:0.5px solid var(--border-mid); border-radius:5px; padding:2px 5px; background:var(--bg-primary); color:var(--text-primary); }
+#league { max-height:310px; overflow-y:auto; }
+.lrow { display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:var(--radius-md); cursor:pointer; transition:background .1s; }
+.lrow:hover { background:var(--bg-secondary); }
+.lrow-bar { height:3px; border-radius:2px; background:var(--border-light); margin-top:3px; position:relative; }
+.lrow-fill { position:absolute; left:0; top:0; height:100%; border-radius:2px; }
+
+/* ── route detail ── */
+.back-btn { display:inline-flex; align-items:center; gap:5px; font-size:12px; color:var(--text-secondary); cursor:pointer; padding:4px 0; border:none; background:transparent; margin-bottom:8px; }
+.back-btn:hover { color:var(--text-primary); }
+.route-hdr { display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+.route-title { font-size:15px; font-weight:500; }
+.route-op { font-size:12px; color:var(--text-secondary); }
+
+/* ── stop search ── */
+.srch-wrap { position:relative; margin-bottom:12px; }
+.srch-input { width:100%; padding:8px 12px; border:0.5px solid var(--border-mid); border-radius:var(--radius-md); font-size:13px; background:var(--bg-primary); color:var(--text-primary); }
+.srch-input:focus { outline:none; border-color:var(--border-strong); }
+.srch-drop { display:none; position:absolute; top:calc(100% + 3px); left:0; right:0; z-index:50; background:var(--bg-primary); border:0.5px solid var(--border-mid); border-radius:var(--radius-md); max-height:170px; overflow-y:auto; }
+.srow { padding:6px 12px; cursor:pointer; font-size:13px; color:var(--text-primary); }
+.srow:hover,.srow.hl { background:var(--bg-secondary); }
+
+/* ── route bar ── */
+#rbar { display:flex; align-items:center; overflow-x:auto; padding:3px 0; margin-bottom:12px; gap:0; scrollbar-width:none; }
+
+/* ── stop meta ── */
+.stop-meta { display:flex; align-items:baseline; gap:10px; margin-bottom:14px; }
+.stop-name { font-size:15px; font-weight:500; }
+.stop-sub  { font-size:12px; color:var(--text-secondary); }
+
+/* ── scatter ── */
+.scatter-ctrl { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; flex-wrap:wrap; gap:6px; }
+.pleg-row { display:flex; flex-wrap:wrap; gap:10px; }
+.pleg { font-size:11px; color:var(--text-secondary); display:flex; align-items:center; gap:4px; }
+.pleg-dot { width:8px; height:8px; border-radius:2px; display:inline-block; flex-shrink:0; }
+.day-btns { display:flex; gap:4px; flex-shrink:0; }
+.dt { padding:4px 10px; border-radius:var(--radius-sm); border:0.5px solid var(--border-mid); font-size:12px; cursor:pointer; background:transparent; color:var(--text-secondary); }
+.dt.on { background:var(--bg-secondary); color:var(--text-primary); border-color:var(--border-strong); }
+.chart-wrap { position:relative; width:100%; height:230px; margin-bottom:4px; }
+.chart-note { font-size:11px; color:var(--text-tertiary); margin-bottom:20px; }
+
+/* ── heatmap ── */
+.hm-title { font-size:12px; font-weight:500; color:var(--text-secondary); margin-bottom:8px; }
+#hm { overflow-x:auto; }
+#hm table { width:100%; border-collapse:separate; border-spacing:3px; min-width:360px; }
+#hm th { font-size:11px; font-weight:500; color:var(--text-secondary); padding:0 4px 8px; }
+#hm th:first-child { text-align:left; width:110px; }
+#hm th:last-child  { width:55px; text-align:center; }
+#hm th:not(:first-child):not(:last-child) { text-align:center; }
+.hm-cell { padding:7px 10px; border-radius:var(--radius-sm); }
+.hm-val  { font-size:13px; font-weight:500; }
+.hm-bar  { height:3px; border-radius:2px; margin-top:5px; opacity:.35; }
+#hml { display:flex; gap:12px; flex-wrap:wrap; margin-top:10px; margin-bottom:8px; }
+.hml-item { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text-secondary); }
+.hml-swatch { width:10px; height:10px; border-radius:2px; display:inline-block; flex-shrink:0; opacity:.75; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="hdr">
+    <div>
+      <h1>Greater Manchester Bus Delay Dashboard</h1>
+      <div class="hdr-sub">Mock data · 8 sample routes · LSOA overlay aggregated from all stops</div>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab on" id="tN" onclick="goNetwork()">Network overview</button>
+    <button class="tab dim" id="tC">Corridor / district</button>
+    <button class="tab dim" id="tR">Route detail</button>
+    <span class="breadcrumb" id="breadcrumb">GM network · all routes</span>
+  </div>
+
+  <!-- ══════════════ NETWORK LAYER ══════════════ -->
+  <div id="layerN">
+
+    <div class="period-bar">
+      <span style="font-size:12px;color:var(--text-secondary);margin-right:2px">period:</span>
+      <button class="ptab on" id="pAll" onclick="setPeriod(-1)">all day</button>
+      <button class="ptab" id="p0" onclick="setPeriod(0)">AM off-peak</button>
+      <button class="ptab" id="p1" onclick="setPeriod(1)">AM peak</button>
+      <button class="ptab" id="p2" onclick="setPeriod(2)">Midday</button>
+      <button class="ptab" id="p3" onclick="setPeriod(3)">PM peak</button>
+      <button class="ptab" id="p4" onclick="setPeriod(4)">PM off-peak</button>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="mc"><div class="mc-lbl">network mean delay</div><div class="mc-val" id="kpi1">—</div></div>
+      <div class="mc"><div class="mc-lbl">routes on-time &gt;80%</div><div class="mc-val" id="kpi2">—</div></div>
+      <div class="mc"><div class="mc-lbl">worst route</div><div class="mc-val sm" id="kpi3">—</div></div>
+      <div class="mc"><div class="mc-lbl">best route</div><div class="mc-val sm" id="kpi4">—</div></div>
+    </div>
+
+    <div class="net-layout">
+      <div>
+        <div class="map-note">routes coloured by mean delay · click route or LSOA to drill in</div>
+        <div id="mapN"></div>
+
+        <div class="map-toolbar">
+          <div class="map-legend" id="routeLegend">
+            <span class="leg-item"><span class="leg-line" style="background:#1D9E75"></span>≤ 2 min</span>
+            <span class="leg-item"><span class="leg-line" style="background:#EF9F27"></span>2 – 5 min</span>
+            <span class="leg-item"><span class="leg-line" style="background:#E24B4A"></span>&gt; 5 min</span>
+          </div>
+          <button class="lsoa-btn" id="lsoaToggle" onclick="toggleLSOA()">+ LSOA overlay</button>
+        </div>
+
+        <!-- LSOA gradient legend (hidden until toggled) -->
+        <div class="lsoa-legend" id="lsoaLegend">
+          <span class="lsoa-leg-lbl">LSOA mean delay:</span>
+          <span class="lsoa-leg-lbl">0 min</span>
+          <div class="lsoa-grad"></div>
+          <span class="lsoa-leg-lbl">7+ min</span>
+          <span style="font-size:11px;color:var(--text-tertiary);margin-left:4px">(opacity = data coverage)</span>
+        </div>
+
+        <!-- LSOA click-info panel -->
+        <div class="lsoa-info" id="lsoaInfo">
+          <div class="lsoa-info-head" id="lsoaInfoHead">click an LSOA cell for details</div>
+          <div class="lsoa-info-grid" id="lsoaInfoGrid"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="league-hdr">
+          <span style="font-size:12px;font-weight:500;color:var(--text-secondary)">route ranking</span>
+          <select class="sort-sel" id="sortSel" onchange="renderLeague()">
+            <option value="delay">by delay</option>
+            <option value="otp">by on-time %</option>
+          </select>
+        </div>
+        <div id="league"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ ROUTE DETAIL LAYER ══════════════ -->
+  <div id="layerR" style="display:none">
+    <button class="back-btn" onclick="goNetwork()">← back to network</button>
+
+    <div class="route-hdr">
+      <span class="route-title" id="rTitle">—</span>
+      <span class="route-op" id="rOp">—</span>
+    </div>
+
+    <div class="srch-wrap">
+      <input class="srch-input" id="sinput" type="text" placeholder="Search or click a stop on the map…"
+        oninput="onSI(this.value)" onfocus="showSD()">
+      <div class="srch-drop" id="sdrop"></div>
+    </div>
+
+    <div id="mapR"></div>
+    <div id="rbar"></div>
+
+    <div class="stop-meta">
+      <span class="stop-name" id="cs">—</span>
+      <span class="stop-sub" id="csub">—</span>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="mc"><div class="mc-lbl">mean delay</div><div class="mc-val" id="m1">—</div></div>
+      <div class="mc"><div class="mc-lbl">on-time ≤2 min</div><div class="mc-val" id="m2">—</div></div>
+      <div class="mc"><div class="mc-lbl">worst period</div><div class="mc-val sm" id="m3">—</div></div>
+      <div class="mc"><div class="mc-lbl">best period</div><div class="mc-val sm" id="m4">—</div></div>
+    </div>
+
+    <div class="scatter-ctrl">
+      <div class="pleg-row">
+        <span class="pleg"><span class="pleg-dot" style="background:#5DCAA5"></span>AM off-peak</span>
+        <span class="pleg"><span class="pleg-dot" style="background:#378ADD"></span>AM peak</span>
+        <span class="pleg"><span class="pleg-dot" style="background:#B4B2A9"></span>midday</span>
+        <span class="pleg"><span class="pleg-dot" style="background:#D85A30"></span>PM peak</span>
+        <span class="pleg"><span class="pleg-dot" style="background:#7F77DD"></span>PM off-peak</span>
+      </div>
+      <div class="day-btns">
+        <button class="dt on" id="bWD" onclick="setDay('weekday')">weekday</button>
+        <button class="dt"    id="bWE" onclick="setDay('weekend')">weekend</button>
+      </div>
+    </div>
+
+    <div class="chart-wrap"><canvas id="sc"></canvas></div>
+    <div class="chart-note">y = 0 on-time · + delayed · − early · each dot = one recorded trip</div>
+
+    <div class="hm-title">mean delay by period × week type (min)</div>
+    <div id="hm"></div>
+    <div id="hml"></div>
+  </div>
+
+</div><!-- /shell -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+/* ═══════════════════════════════════════════
+   DATA DEFINITIONS
+═══════════════════════════════════════════ */
+const LINES = {
+  '42':  { dest:'Stockport via Didsbury',   op:'Stagecoach',      oc:'#E8611A', c:'#1D9E75',
+    s:['Piccadilly Gardens','Oxford Road','Fallowfield','Withington','Didsbury Village','Heaton Moor Rd','Stockport Bus Stn'],
+    coords:[[53.4806,-2.2381],[53.4722,-2.2356],[53.4452,-2.2187],[53.4310,-2.2243],[53.4195,-2.2286],[53.4040,-2.1890],[53.4107,-2.1575]] },
+  '86':  { dest:'Ashton-under-Lyne',        op:'First Manchester', oc:'#C41E3A', c:'#378ADD',
+    s:['Piccadilly','Beswick','Droylsden','Fairfield','Ashton Bus Stn'],
+    coords:[[53.4773,-2.2309],[53.4762,-2.1875],[53.4784,-2.1414],[53.4780,-2.1064],[53.4888,-2.0963]] },
+  '192': { dest:'Hazel Grove via Stockport', op:'Stagecoach',      oc:'#E8611A', c:'#D85A30',
+    s:['Piccadilly Gardens','Longsight','Levenshulme','Stockport Bus Stn','Hazel Grove'],
+    coords:[[53.4806,-2.2381],[53.4616,-2.2060],[53.4454,-2.1873],[53.4107,-2.1575],[53.3783,-2.1147]] },
+  'X57': { dest:'Bolton Express',            op:'Arriva',           oc:'#1A3A6B', c:'#7F77DD',
+    s:['Victoria','Salford Central','Swinton','Farnworth','Bolton Bus Stn'],
+    coords:[[53.4844,-2.2420],[53.4889,-2.2763],[53.5110,-2.3440],[53.5451,-2.3949],[53.5789,-2.4282]] },
+  '135': { dest:'Urmston via Old Trafford',  op:'First Manchester', oc:'#C41E3A', c:'#BA7517',
+    s:['Salford Crescent','Salford Central','Old Trafford','Stretford Mall','Urmston'],
+    coords:[[53.4875,-2.2773],[53.4830,-2.2690],[53.4631,-2.2913],[53.4470,-2.3084],[53.4481,-2.3738]] },
+  '18':  { dest:'Leigh via Eccles',          op:'Go North West',    oc:'#007DC5', c:'#0F6E56',
+    s:['Piccadilly','Deansgate','Salford','Eccles','Boothstown','Leigh'],
+    coords:[[53.4773,-2.2309],[53.4784,-2.2441],[53.4841,-2.2763],[53.4876,-2.3333],[53.5062,-2.4012],[53.4985,-2.4931]] },
+  '197': { dest:'Wythenshawe Hospital',       op:'Stagecoach',      oc:'#E8611A', c:'#639922',
+    s:['Piccadilly','Rusholme','Fallowfield','Didsbury','Northenden','Wythenshawe Hosp'],
+    coords:[[53.4806,-2.2381],[53.4617,-2.2178],[53.4452,-2.2187],[53.4195,-2.2286],[53.4060,-2.2626],[53.3906,-2.2710]] },
+  '471': { dest:'Glossop via Hyde',           op:'First Manchester', oc:'#C41E3A', c:'#533490',
+    s:['Piccadilly','Ardwick','Hyde','Mottram','Glossop'],
+    coords:[[53.4773,-2.2309],[53.4670,-2.2041],[53.4548,-2.0837],[53.4605,-1.9985],[53.4430,-1.9479]] },
+};
+
+const PERIODS = [
+  { lbl:'AM off-peak', s:5,  e:7,  c:'#5DCAA5' },
+  { lbl:'AM peak',     s:7,  e:9,  c:'#378ADD'  },
+  { lbl:'Midday',      s:9,  e:16, c:'#B4B2A9'  },
+  { lbl:'PM peak',     s:16, e:19, c:'#D85A30'  },
+  { lbl:'PM off-peak', s:19, e:23, c:'#7F77DD'  },
+];
+const PER_COLORS = ['#5DCAA5','#378ADD','#B4B2A9','#D85A30','#7F77DD'];
+const WD_BASE = [1.5, 6.2, 2.8, 8.5, 3.2];
+const WE_BASE = [0.7, 2.0, 1.6, 3.2, 1.4];
+
+// GM neighbourhood lookup (rough coordinate ranges)
+const NEIGHBOURHOODS = [
+  { lat0:53.470, lat1:53.500, lng0:-2.265, lng1:-2.205, name:'City Centre'      },
+  { lat0:53.470, lat1:53.505, lng0:-2.320, lng1:-2.265, name:'Salford'           },
+  { lat0:53.430, lat1:53.470, lng0:-2.255, lng1:-2.185, name:'Rusholme / Longsight' },
+  { lat0:53.400, lat1:53.435, lng0:-2.255, lng1:-2.200, name:'Didsbury'          },
+  { lat0:53.440, lat1:53.480, lng0:-2.210, lng1:-2.120, name:'Gorton / Levenshulme' },
+  { lat0:53.440, lat1:53.500, lng0:-2.120, lng1:-2.020, name:'Droylsden / Fairfield' },
+  { lat0:53.470, lat1:53.535, lng0:-2.400, lng1:-2.310, name:'Eccles / Salford West' },
+  { lat0:53.500, lat1:53.560, lng0:-2.400, lng1:-2.300, name:'Swinton / Walkden' },
+  { lat0:53.555, lat1:53.620, lng0:-2.470, lng1:-2.370, name:'Bolton'            },
+  { lat0:53.390, lat1:53.430, lng0:-2.200, lng1:-2.120, name:'Stockport North'   },
+  { lat0:53.355, lat1:53.395, lng0:-2.180, lng1:-2.080, name:'Hazel Grove / Offerton' },
+  { lat0:53.440, lat1:53.480, lng0:-2.430, lng1:-2.340, name:'Stretford / Sale'  },
+  { lat0:53.430, lat1:53.460, lng0:-2.440, lng1:-2.360, name:'Urmston'           },
+  { lat0:53.375, lat1:53.415, lng0:-2.310, lng1:-2.215, name:'Wythenshawe'       },
+  { lat0:53.490, lat1:53.540, lng0:-2.460, lng1:-2.370, name:'Boothstown / Worsley' },
+  { lat0:53.490, lat1:53.520, lng0:-2.530, lng1:-2.440, name:'Leigh'             },
+  { lat0:53.445, lat1:53.480, lng0:-2.090, lng1:-1.980, name:'Hyde / Tameside'   },
+  { lat0:53.435, lat1:53.470, lng0:-1.980, lng1:-1.890, name:'Mottram / Glossop' },
+];
+
+function getNeighbourhood(lat, lng) {
+  for (const n of NEIGHBOURHOODS) {
+    if (lat >= n.lat0 && lat <= n.lat1 && lng >= n.lng0 && lng <= n.lng1) return n.name;
+  }
+  return 'Greater Manchester';
+}
+
+/* ═══════════════════════════════════════════
+   UTILITY / RNG
+═══════════════════════════════════════════ */
+function hsh(s) { let h=5381; for(let i=0;i<s.length;i++) h=(h*33^s.charCodeAt(i))>>>0; return h; }
+function mkrng(seed) {
+  let s = seed===0?1:seed>>>0;
+  return () => { s^=s<<13; s^=s>>17; s^=s<<5; return (s>>>0)/4294967295; };
+}
+
+/* ═══════════════════════════════════════════
+   DELAY CALCULATIONS
+═══════════════════════════════════════════ */
+function getMns(ln, sn, idx) {
+  const r = mkrng(hsh(ln+sn+idx));
+  const n = LINES[ln].s.length, pf = 0.75 + 0.5*(idx/Math.max(1,n-1));
+  return {
+    wd: WD_BASE.map(b => Math.max(0.1, b*pf + (r()-0.5)*2.5)),
+    we: WE_BASE.map(b => Math.max(0.1, b   + (r()-0.5)*0.8)),
+  };
+}
+
+function getStopDelay(ln, sn, idx, pi) {
+  const m = getMns(ln, sn, idx);
+  if (pi < 0) {
+    const all = [...m.wd, ...m.we];
+    return all.reduce((a,b)=>a+b,0) / all.length;
+  }
+  return m.wd[pi];
+}
+
+function getRouteMean(ln, pi) {
+  const l = LINES[ln];
+  let tot = 0;
+  l.s.forEach((sn, idx) => {
+    const r = mkrng(hsh(ln+sn+idx));
+    const n = l.s.length, pf = 0.75 + 0.5*(idx/Math.max(1,n-1));
+    if (pi < 0) {
+      WD_BASE.forEach(b => { tot += Math.max(0.1, b*pf + (r()-0.5)*2.5); });
+      WE_BASE.forEach(b => { tot += Math.max(0.1, b   + (r()-0.5)*0.8); });
+    } else {
+      tot += Math.max(0.1, WD_BASE[pi]*pf + (r()-0.5)*2.5);
+    }
+  });
+  return tot / (l.s.length * (pi<0 ? 10 : 1));
+}
+
+function getAllStops(pi) {
+  return Object.keys(LINES).flatMap(k =>
+    LINES[k].s.map((sn, idx) => ({
+      lat:   LINES[k].coords[idx][0],
+      lng:   LINES[k].coords[idx][1],
+      delay: getStopDelay(k, sn, idx, pi),
+      route: k, name: sn,
+    }))
+  );
+}
+
+function mkTrips(ms, r) {
+  const pts = [];
+  PERIODS.forEach((p, pi) => {
+    const m = ms[pi], sd = Math.max(0.8, m*0.55+0.8);
+    for (let i=0; i<16; i++) {
+      const h  = p.s + r()*(p.e-p.s);
+      const u1 = Math.max(1e-4, r()), u2 = r();
+      const z  = Math.sqrt(-2*Math.log(u1))*Math.cos(6.2832*u2);
+      pts.push({ x:+(h.toFixed(3)), y:+(m+sd*z).toFixed(2), pi });
+    }
+  });
+  return pts;
+}
+
+/* ═══════════════════════════════════════════
+   COLOR HELPERS
+═══════════════════════════════════════════ */
+function delayColor(v) {
+  if (v <= 2) return '#1D9E75';
+  if (v <= 5) return '#EF9F27';
+  return '#E24B4A';
+}
+
+function lerpHex(c1, c2, t) {
+  const p = n => parseInt(n,16);
+  const r1=p(c1.slice(1,3)), g1=p(c1.slice(3,5)), b1=p(c1.slice(5,7));
+  const r2=p(c2.slice(1,3)), g2=p(c2.slice(3,5)), b2=p(c2.slice(5,7));
+  const r=Math.round(r1+(r2-r1)*t), g=Math.round(g1+(g2-g1)*t), b=Math.round(b1+(b2-b1)*t);
+  return '#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+
+function lsoaFillColor(v) {
+  const c = Math.max(0, Math.min(8, v));
+  if (c <= 2)   return lerpHex('#5DCAA5','#EF9F27', c/2);
+  if (c <= 5)   return lerpHex('#EF9F27','#E24B4A', (c-2)/3);
+  return               lerpHex('#E24B4A','#8B1A1A', Math.min(1,(c-5)/3));
+}
+
+/* ═══════════════════════════════════════════
+   LSOA GRID BUILDER
+   Grid: ~0.022° lat × 0.036° lng ≈ 2.4 × 2.4 km
+   Covers Greater Manchester bounding box
+═══════════════════════════════════════════ */
+const LSOA_LAT_MIN = 53.34, LSOA_LAT_MAX = 53.64, LSOA_DLAT = 0.022;
+const LSOA_LNG_MIN = -2.78, LSOA_LNG_MAX = -1.88, LSOA_DLNG = 0.036;
+const LSOA_RADIUS_KM = 3.2;  // IDW influence radius
+const LSOA_NOISE_AMP = 1.2;  // ± minutes of seeded noise
+
+function buildLSOAFeatures(pi) {
+  const stops = getAllStops(pi);
+  const features = [];
+  let codeN = 10001;
+
+  for (let lat = LSOA_LAT_MIN; lat < LSOA_LAT_MAX; lat += LSOA_DLAT) {
+    for (let lng = LSOA_LNG_MIN; lng < LSOA_LNG_MAX; lng += LSOA_DLNG) {
+      const cLat = lat + LSOA_DLAT/2;
+      const cLng = lng + LSOA_DLNG/2;
+
+      // Inverse-distance weighted average of nearby stops
+      let wSum = 0, dSum = 0, count = 0;
+      const contributing = [];
+      stops.forEach(s => {
+        const dlat = (s.lat - cLat) * 111.0;
+        const dlng = (s.lng - cLng) * 66.5;   // cos(53.5°) ≈ 0.60
+        const dist  = Math.sqrt(dlat*dlat + dlng*dlng);
+        if (dist < LSOA_RADIUS_KM) {
+          const w = 1 / Math.max(0.15, dist);
+          dSum += s.delay * w;
+          wSum += w;
+          count++;
+          if (!contributing.includes(s.route)) contributing.push(s.route);
+        }
+      });
+
+      if (wSum === 0) continue;  // no service coverage — skip cell
+
+      const baseDelay = dSum / wSum;
+      // Seeded deterministic noise so neighbours differ realistically
+      const rng   = mkrng(hsh('lsoa' + lat.toFixed(4) + lng.toFixed(4)));
+      const noise = (rng() - 0.5) * 2 * LSOA_NOISE_AMP;
+      const delay = Math.max(0.1, baseDelay + noise);
+      // Coverage opacity: more stops → more opaque (max ~0.68)
+      const opacity = Math.min(0.68, 0.28 + count * 0.06);
+
+      const code  = 'E01' + String(codeN++).padStart(6,'0');
+      const area  = getNeighbourhood(cLat, cLng);
+
+      features.push({
+        type: 'Feature',
+        properties: { code, area, delay, count, opacity, routes: contributing.join(', ') },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[
+            [lng,           lat          ],
+            [lng+LSOA_DLNG, lat          ],
+            [lng+LSOA_DLNG, lat+LSOA_DLAT],
+            [lng,           lat+LSOA_DLAT],
+            [lng,           lat          ],
+          ]],
+        },
+      });
+    }
+  }
+  return features;
+}
+
+/* ═══════════════════════════════════════════
+   NETWORK LAYER STATE
+═══════════════════════════════════════════ */
+let curPeriod = -1;
+let mapN = null, routeLayersN = {};
+let lsoaLayer = null, lsoaVisible = false;
+
+function setPeriod(pi) {
+  curPeriod = pi;
+  ['pAll','p0','p1','p2','p3','p4'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    const match = (pi === -1 && i === 0) || (i-1 === pi);
+    el.className = 'ptab' + (match ? ' on' : '');
+    if (match && pi >= 0) {
+      el.style.cssText = `background:${PER_COLORS[pi]}33;color:var(--text-primary);border-color:${PER_COLORS[pi]}77`;
+    } else if (match) {
+      el.style.cssText = 'background:var(--bg-secondary);color:var(--text-primary);border-color:transparent';
+    } else {
+      el.style.cssText = '';
+    }
+  });
+  updateNetworkKPIs();
+  renderLeague();
+  updateNetworkMapColors();
+  if (lsoaVisible) renderLSOALayer(pi);
+}
+
+function updateNetworkKPIs() {
+  const keys  = Object.keys(LINES);
+  const means = keys.map(k => getRouteMean(k, curPeriod));
+  const avg   = (means.reduce((a,b)=>a+b,0)/means.length).toFixed(1);
+  const good  = means.filter(m=>m<=3).length;
+  const wi    = means.indexOf(Math.max(...means));
+  const bi    = means.indexOf(Math.min(...means));
+  document.getElementById('kpi1').textContent = avg + ' min';
+  document.getElementById('kpi2').textContent = good + ' / ' + keys.length;
+  document.getElementById('kpi3').textContent = keys[wi] + ' · ' + LINES[keys[wi]].dest.split(' via')[0];
+  document.getElementById('kpi4').textContent = keys[bi] + ' · ' + LINES[keys[bi]].dest.split(' via')[0];
+}
+
+function renderLeague() {
+  const sort = document.getElementById('sortSel').value;
+  const rng  = mkrng(42);
+  const rows = Object.keys(LINES).map(k => {
+    const m = getRouteMean(k, curPeriod);
+    return { k, m, otp: Math.max(10, Math.min(99, Math.round(80 - m*5 + rng()*6))) };
+  });
+  if (sort === 'delay') rows.sort((a,b) => b.m - a.m);
+  else rows.sort((a,b) => a.otp - b.otp);
+  const mx = Math.max(...rows.map(r=>r.m));
+  document.getElementById('league').innerHTML = rows.map((r, rank) => {
+    const l = LINES[r.k], dc = delayColor(r.m), bw = Math.round(r.m/mx*100);
+    const dest = l.dest.length>22 ? l.dest.slice(0,22)+'…' : l.dest;
+    return `<div class="lrow" onclick="goRoute('${r.k}')">
+      <span style="font-size:11px;color:var(--text-tertiary);width:14px;text-align:right;flex-shrink:0">${rank+1}</span>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:5px">
+          <span style="font-size:12px;font-weight:500;color:${l.c}">${r.k}</span>
+          <span style="font-size:11px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${dest}</span>
+        </div>
+        <div class="lrow-bar"><div class="lrow-fill" style="width:${bw}%;background:${dc}"></div></div>
+      </div>
+      <span style="font-size:12px;font-weight:500;color:${dc};flex-shrink:0;min-width:36px;text-align:right">${r.m.toFixed(1)}</span>
+    </div>`;
+  }).join('');
+}
+
+function initNetworkMap() {
+  if (mapN) return;
+  mapN = L.map('mapN', { zoomControl:true, attributionControl:false });
+  mapN.setView([53.49, -2.26], 10);
+  Object.keys(LINES).forEach(k => {
+    const l = LINES[k], m = getRouteMean(k, curPeriod), dc = delayColor(m);
+    const pl = L.polyline(l.coords, { color:dc, weight:5, opacity:0.88 }).addTo(mapN);
+    pl.bindTooltip(`<b>${k}</b> ${l.dest}<br>mean delay: ${m.toFixed(1)} min`, { className:'ltt', sticky:true });
+    pl.on('click', () => goRoute(k));
+    const endM = L.circleMarker(l.coords[l.coords.length-1], {
+      radius:4, fillColor:dc, color:'#fff', weight:1.5, fillOpacity:1
+    }).addTo(mapN);
+    routeLayersN[k] = { pl, endM };
+  });
+}
+
+function updateNetworkMapColors() {
+  if (!mapN) return;
+  Object.keys(LINES).forEach(k => {
+    const m = getRouteMean(k, curPeriod), dc = delayColor(m);
+    routeLayersN[k].pl.setStyle({ color:dc });
+    routeLayersN[k].endM.setStyle({ fillColor:dc });
+    routeLayersN[k].pl.setTooltipContent(`<b>${k}</b> ${LINES[k].dest}<br>mean delay: ${m.toFixed(1)} min`);
+  });
+}
+
+/* ═══════════════════════════════════════════
+   LSOA OVERLAY
+═══════════════════════════════════════════ */
+function renderLSOALayer(pi) {
+  if (lsoaLayer) { mapN.removeLayer(lsoaLayer); lsoaLayer = null; }
+  const features = buildLSOAFeatures(pi);
+  const gj = { type:'FeatureCollection', features };
+
+  lsoaLayer = L.geoJSON(gj, {
+    style: f => ({
+      fillColor:   lsoaFillColor(f.properties.delay),
+      fillOpacity: f.properties.opacity,
+      weight:      0.4,
+      color:       '#ffffff',
+      opacity:     0.5,
+    }),
+    onEachFeature: (f, layer) => {
+      const p = f.properties;
+      const tip = `<b>${p.code}</b><br>${p.area}<br>`
+                + `Mean delay: <b>${p.delay.toFixed(1)} min</b><br>`
+                + `Stops within ${LSOA_RADIUS_KM} km: ${p.count}<br>`
+                + `Routes: ${p.routes || '—'}`;
+      layer.bindTooltip(tip, { className:'ltt', sticky:true });
+      layer.on('click', () => showLSOAInfo(p));
+    },
+  }).addTo(mapN);
+
+  // Keep route polylines on top
+  Object.values(routeLayersN).forEach(({ pl, endM }) => { pl.bringToFront(); endM.bringToFront(); });
+}
+
+function toggleLSOA() {
+  lsoaVisible = !lsoaVisible;
+  const btn = document.getElementById('lsoaToggle');
+  const leg = document.getElementById('lsoaLegend');
+  const inf = document.getElementById('lsoaInfo');
+  if (lsoaVisible) {
+    renderLSOALayer(curPeriod);
+    btn.textContent = '× LSOA overlay';
+    btn.className   = 'lsoa-btn on';
+    leg.style.display = 'flex';
+    inf.style.display = 'block';
+  } else {
+    if (lsoaLayer) { mapN.removeLayer(lsoaLayer); lsoaLayer = null; }
+    btn.textContent = '+ LSOA overlay';
+    btn.className   = 'lsoa-btn';
+    leg.style.display = 'none';
+    inf.style.display = 'none';
+  }
+}
+
+function showLSOAInfo(p) {
+  document.getElementById('lsoaInfoHead').textContent = `${p.code} · ${p.area}`;
+  document.getElementById('lsoaInfoGrid').innerHTML = `
+    <div class="lsoa-info-cell">
+      <div class="label">mean delay</div>
+      <div class="value" style="color:${lsoaFillColor(p.delay)}">${p.delay.toFixed(1)} min</div>
+    </div>
+    <div class="lsoa-info-cell">
+      <div class="label">nearby stops</div>
+      <div class="value">${p.count}</div>
+    </div>
+    <div class="lsoa-info-cell">
+      <div class="label">routes</div>
+      <div class="value" style="font-size:12px">${p.routes || '—'}</div>
+    </div>`;
+}
+
+/* ═══════════════════════════════════════════
+   LAYER NAVIGATION
+═══════════════════════════════════════════ */
+function goNetwork() {
+  document.getElementById('layerN').style.display = '';
+  document.getElementById('layerR').style.display = 'none';
+  document.getElementById('tN').className = 'tab on';
+  document.getElementById('tR').className = 'tab dim';
+  document.getElementById('breadcrumb').textContent = 'GM network · all routes';
+  setTimeout(() => initNetworkMap(), 80);
+}
+
+/* ═══════════════════════════════════════════
+   ROUTE DETAIL STATE
+═══════════════════════════════════════════ */
+let curLine = '42', curSI = 0, curDay = 'weekday';
+let chartObj = null, wdT, weT, curMns;
+let mapR = null, rPolyline = null, rStopMarkers = [];
+
+function goRoute(k) {
+  curLine = k; curSI = 0;
+  document.getElementById('layerN').style.display = 'none';
+  document.getElementById('layerR').style.display = '';
+  document.getElementById('tN').className = 'tab';
+  document.getElementById('tR').className = 'tab on';
+  document.getElementById('tR').style.opacity = '1';
+  document.getElementById('tR').style.pointerEvents = 'auto';
+  document.getElementById('breadcrumb').textContent = `Route ${k} · ${LINES[k].dest}`;
+  const l = LINES[k];
+  document.getElementById('rTitle').textContent = `Route ${k} — ${l.dest}`;
+  document.getElementById('rTitle').style.color = l.c;
+  document.getElementById('rOp').textContent = l.op;
+  document.getElementById('sinput').value = l.s[0];
+  setTimeout(() => { initRouteMap(); refreshStopData(); }, 80);
+}
+
+function initRouteMap() {
+  const l = LINES[curLine];
+  if (!mapR) {
+    mapR = L.map('mapR', { zoomControl:false, attributionControl:false });
+    mapR.setView(l.coords[0], 12);
+  }
+  if (rPolyline) mapR.removeLayer(rPolyline);
+  rStopMarkers.forEach(m => mapR.removeLayer(m));
+  rStopMarkers = [];
+  rPolyline = L.polyline(l.coords, { color:l.c, weight:4, opacity:0.9 }).addTo(mapR);
+  l.s.forEach((stop, i) => {
+    const sel = i === curSI;
+    const m = L.circleMarker(l.coords[i], {
+      radius: sel?8:5, fillColor: sel?l.c:'#fff', color:l.c, weight:2.5, fillOpacity:1
+    }).addTo(mapR);
+    m.bindTooltip(stop, { permanent:sel, direction:'right', className:'ltt', offset:[4,0] });
+    if (sel) m.openTooltip();
+    m.on('click', () => pickStop(i));
+    rStopMarkers.push(m);
+  });
+  mapR.fitBounds(rPolyline.getBounds(), { padding:[22,22] });
+}
+
+function refreshMapMarkers() {
+  if (!mapR) return;
+  const l = LINES[curLine];
+  rStopMarkers.forEach((m, i) => {
+    const sel = i === curSI;
+    m.setRadius(sel?8:5);
+    m.setStyle({ fillColor: sel?l.c:'#fff' });
+    m.unbindTooltip();
+    m.bindTooltip(l.s[i], { permanent:sel, direction:'right', className:'ltt', offset:[4,0] });
+    if (sel) m.openTooltip();
+  });
+}
+
+function renderRouteBar() {
+  const stops = LINES[curLine].s, col = LINES[curLine].c;
+  let h = '';
+  stops.forEach((s, i) => {
+    if (i > 0) h += `<div style="flex:1;height:2px;background:${i<=curSI?col:'var(--border-light)'};min-width:5px;max-width:28px"></div>`;
+    h += `<div title="${s}" onclick="pickStop(${i})" style="width:9px;height:9px;border-radius:50%;background:${i===curSI?col:i<curSI?col+'77':'var(--border-light)'};flex-shrink:0;cursor:pointer"></div>`;
+  });
+  document.getElementById('rbar').innerHTML = h;
+}
+
+function onSI(v)  { filterSD(v); document.getElementById('sdrop').style.display='block'; }
+function showSD() { filterSD(document.getElementById('sinput').value); document.getElementById('sdrop').style.display='block'; }
+function filterSD(q) {
+  const stops = LINES[curLine].s;
+  const fl = q ? stops.filter(s=>s.toLowerCase().includes(q.toLowerCase())) : stops;
+  document.getElementById('sdrop').innerHTML = fl.length
+    ? fl.map(s => { const i=stops.indexOf(s); return `<div class="srow${i===curSI?' hl':''}" onclick="pickStop(${i})">${s}</div>`; }).join('')
+    : `<div style="padding:8px 12px;font-size:12px;color:var(--text-secondary)">no stops found</div>`;
+}
+
+function pickStop(i) {
+  curSI = i;
+  document.getElementById('sinput').value = LINES[curLine].s[i];
+  document.getElementById('sdrop').style.display = 'none';
+  refreshMapMarkers();
+  refreshStopData();
+}
+
+function setDay(d) {
+  curDay = d;
+  document.getElementById('bWD').className = 'dt'+(d==='weekday'?' on':'');
+  document.getElementById('bWE').className = 'dt'+(d==='weekend'?' on':'');
+  renderScatter();
+}
+
+function refreshStopData() {
+  const nm = LINES[curLine].s[curSI], l = LINES[curLine];
+  document.getElementById('cs').textContent   = nm;
+  document.getElementById('csub').textContent = `Route ${curLine} · stop ${curSI+1} of ${l.s.length}`;
+  curMns = getMns(curLine, nm, curSI);
+  wdT = mkTrips(curMns.wd, mkrng(hsh(curLine+nm+curSI+'wd')));
+  weT = mkTrips(curMns.we, mkrng(hsh(curLine+nm+curSI+'we')));
+  renderRouteBar(); renderMetrics(); renderScatter(); renderHM();
+}
+
+function renderMetrics() {
+  const all  = [...curMns.wd,...curMns.we];
+  const mean = (all.reduce((a,b)=>a+b,0)/all.length).toFixed(1);
+  const trips = [...wdT,...weT];
+  const otp  = Math.round(trips.filter(t=>t.y<=2).length/trips.length*100);
+  const wi   = curMns.wd.indexOf(Math.max(...curMns.wd));
+  const bi   = curMns.wd.indexOf(Math.min(...curMns.wd));
+  document.getElementById('m1').textContent = mean+' min';
+  document.getElementById('m2').textContent = otp+'%';
+  document.getElementById('m3').textContent = PERIODS[wi].lbl;
+  document.getElementById('m4').textContent = PERIODS[bi].lbl;
+}
+
+function renderScatter() {
+  const trips = curDay==='weekday' ? wdT : weT;
+  const ds = PERIODS.map((p, pi) => ({
+    label: p.lbl,
+    data:  trips.filter(t=>t.pi===pi).map(t=>({x:t.x,y:t.y})),
+    backgroundColor: p.c+'bb', pointRadius:4, pointHoverRadius:6,
+  }));
+  if (chartObj) { chartObj.data.datasets=ds; chartObj.update(); return; }
+  chartObj = new Chart(document.getElementById('sc').getContext('2d'), {
+    type:'scatter', data:{datasets:ds},
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:{duration:200},
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:it=>{
+          const h=Math.floor(it.parsed.x), mn=Math.round((it.parsed.x-h)*60), sign=it.parsed.y>=0?'+':'';
+          return `${String(h).padStart(2,'0')}:${String(mn).padStart(2,'0')} · ${sign}${it.parsed.y.toFixed(1)} min · ${it.dataset.label}`;
+        }}},
+      },
+      scales:{
+        x:{ type:'linear', min:5, max:23,
+          ticks:{ stepSize:2, callback:v=>`${String(v).padStart(2,'0')}:00`, font:{size:11}, color:'rgba(136,135,128,0.75)' },
+          grid:{ color:'rgba(136,135,128,0.1)' }, border:{ color:'rgba(136,135,128,0.3)' } },
+        y:{ min:-4, max:16,
+          ticks:{ callback:v=>v===0?'±0':v+' min', font:{size:11}, color:'rgba(136,135,128,0.75)' },
+          grid:{ color:c=>c.tick.value===0?'rgba(136,135,128,0.5)':'rgba(136,135,128,0.1)',
+                 lineWidth:c=>c.tick.value===0?1.5:1 },
+          border:{ color:'rgba(136,135,128,0.3)' } },
+      },
+    },
+  });
+}
+
+function dclr(v) {
+  if (v<=1)   return { bg:'var(--success-bg)', fg:'var(--success-fg)' };
+  if (v<=3.5) return { bg:'var(--warning-bg)', fg:'var(--warning-fg)' };
+  return             { bg:'var(--danger-bg)',  fg:'var(--danger-fg)'  };
+}
+
+function renderHM() {
+  const mx = Math.max(...curMns.wd,...curMns.we);
+  let h = `<table><thead><tr>
+    <th>period</th><th>weekday avg</th><th>weekend avg</th><th>WD − WE</th>
+  </tr></thead><tbody>`;
+  PERIODS.forEach((p, i) => {
+    const wd=curMns.wd[i], we=curMns.we[i], wdC=dclr(wd), weC=dclr(we), diff=wd-we;
+    const wb=Math.round(wd/mx*100), eb=Math.round(we/mx*100);
+    const dc = diff>0.3?'var(--danger-fg)':diff<-0.3?'var(--success-fg)':'var(--text-secondary)';
+    h += `<tr>
+      <td><span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--text-secondary)">
+            <span style="width:7px;height:7px;border-radius:50%;background:${p.c};display:inline-block;flex-shrink:0"></span>${p.lbl}</span></td>
+      <td><div class="hm-cell" style="background:${wdC.bg}">
+            <div class="hm-val" style="color:${wdC.fg}">${wd.toFixed(1)} min</div>
+            <div class="hm-bar" style="background:${wdC.fg};width:${wb}%"></div></div></td>
+      <td><div class="hm-cell" style="background:${weC.bg}">
+            <div class="hm-val" style="color:${weC.fg}">${we.toFixed(1)} min</div>
+            <div class="hm-bar" style="background:${weC.fg};width:${eb}%"></div></div></td>
+      <td style="text-align:center;font-size:12px;font-weight:500;color:${dc}">${diff>=0?'+':''}${diff.toFixed(1)}</td>
+    </tr>`;
+  });
+  h += '</tbody></table>';
+  document.getElementById('hm').innerHTML = h;
+  document.getElementById('hml').innerHTML = [
+    ['var(--success-bg)','var(--success-fg)','≤ 1 min'],
+    ['var(--warning-bg)','var(--warning-fg)','1 – 3.5 min'],
+    ['var(--danger-bg)', 'var(--danger-fg)', '> 3.5 min'],
+  ].map(([bg,fg,lbl]) =>
+    `<span class="hml-item"><span class="hml-swatch" style="background:${bg};border:0.5px solid ${fg}"></span>${lbl}</span>`
+  ).join('');
+}
+
+/* ═══════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════ */
+document.addEventListener('click', ev => {
+  if (!ev.target.closest('#sinput') && !ev.target.closest('#sdrop'))
+    document.getElementById('sdrop').style.display = 'none';
+});
+
+setPeriod(-1);
+setTimeout(() => initNetworkMap(), 120);
+</script>
+</body>
+</html>
