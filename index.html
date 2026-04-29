@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/overview.css" />
 </head>
 
 <body>
@@ -87,37 +88,72 @@
     ========================== -->
     <section id="overview" class="panel overview-panel">
       <div class="section-inner overview-inner">
+
+        <!-- 01 OVERVIEW -->
         <p class="section-label">01</p>
-        <h3>Overview / Research Framing</h3>
+        <h3>Why Manchester, and why bus matters</h3>
         <p class="section-note">
-          This section frames the project as an urban analytics story: from transport access,
-          to delay patterns, to uneven mobility across Greater Manchester.
+          Greater Manchester is a large city-region where mobility is uneven. This overview explains
+          why bus reliability matters for everyday access, opportunity, and transport inequality.
         </p>
 
-        <!-- WHY MANCHESTER / EDITORIAL MAP -->
-        <div class="overview-map-feature">
+        <div class="overview-hero-grid">
+          <!-- MAP / STAT -->
           <div class="overview-map-card">
-            <div class="overview-map-header">
-              <span>Greater Manchester Mobility Context</span>
-              <strong>Bus accessibility layer</strong>
-            </div>
-
             <div id="overview-map" class="overview-map"></div>
 
-            <div class="overview-map-stat">
-              <span>1 in 3</span>
-              <p>daily trips are associated with buses</p>
+            <div class="overview-map-stat share-card">
+              <div class="share-label">Bus share of daily trips</div>
+
+              <div class="share-main">
+                <span class="share-number">33%</span>
+                <span class="share-caption">≈ 1 in 3 trips</span>
+              </div>
+
+              <div class="share-bar" aria-label="33 percent bus share">
+                <span style="width: 33%;"></span>
+              </div>
+
+              <div class="share-context">
+                Bus trips form a major part of everyday mobility across Greater Manchester.
+              </div>
             </div>
           </div>
 
-          <div class="overview-stat-text">
-            <h4>Why Manchester?</h4>
-            <p>
-              Greater Manchester provides a strong case for examining bus reliability because buses
-              support a large share of everyday mobility across the city-region. This overview uses
-              transport accessibility as the starting point for understanding where unreliable service
-              may matter most.
-            </p>
+          <!-- WHY PANEL -->
+          <div class="overview-explain-panel">
+            <div class="overview-explain-item">
+              <div class="overview-icon">01</div>
+              <div>
+                <h4>Why Manchester?</h4>
+                <p>
+                  Greater Manchester is a large and decentralised city-region where access to jobs,
+                  education, and services varies across neighbourhoods.
+                </p>
+              </div>
+            </div>
+
+            <div class="overview-explain-item">
+              <div class="overview-icon">02</div>
+              <div>
+                <h4>Why bus matters?</h4>
+                <p>
+                  Buses support everyday mobility and often provide the most flexible public transport
+                  option for people without easy access to a car.
+                </p>
+              </div>
+            </div>
+
+            <div class="overview-explain-item">
+              <div class="overview-icon">03</div>
+              <div>
+                <h4>Inequality and access</h4>
+                <p>
+                  Poor reliability does not affect all places equally. Areas with fewer transport
+                  alternatives may experience delay as a greater mobility burden.
+                </p>
+              </div>
+            </div>
 
             <div class="mini-source">
               Source: Greater Manchester Independent Prosperity Review Evidence Update: Transport;
@@ -126,121 +162,223 @@
           </div>
         </div>
 
-        <!-- PROJECT SCOPE -->
         <div class="scope-grid">
           <div class="scope-chip">
             <span>Scale</span>
             <strong>Greater Manchester + LSOA</strong>
           </div>
+
           <div class="scope-chip">
             <span>Focus</span>
             <strong>Bus accessibility, delay, reliability</strong>
           </div>
+
           <div class="scope-chip">
             <span>Interpretation</span>
             <strong>Spatial overlap, not direct causality</strong>
           </div>
         </div>
 
-        <!-- RESEARCH QUESTIONS -->
-        <div class="content-card section-block rq-card">
-          <h4>Research Questions</h4>
 
-          <div class="rq-layout">
-            <button class="rq-item active" data-rq="delay">
-              <span>01</span>
-              Where are delays concentrated?
-            </button>
+        <!-- 02 WHO USES THE BUS -->
+        <div class="who-bus-section">
+          <div class="who-bus-intro">
+        <h3>Who uses the bus?</h3>
+        <p>
+          Buses are used across many groups, but dependency is uneven. Some people rely on buses
+          more because they have fewer transport alternatives.
+        </p>
 
-            <button class="rq-item" data-rq="reliability">
-              <span>02</span>
-              How does reliability vary?
-            </button>
-
-            <button class="rq-item" data-rq="inequality">
-              <span>03</span>
-              Where does vulnerability overlap?
-            </button>
-
-            <div class="rq-explanation" id="rq-explanation">
-              <h5>Where are delays concentrated?</h5>
-              <p>
-                We first locate delay hotspots across the bus network to understand where
-                unreliable service is most visible within Greater Manchester.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div class="content-card section-block">
-          <h4>What does this website show?</h4>
+        <div class="key-insight-card">
+          <strong>Key insight</strong>
           <p>
-            This website moves from system-wide transport context to route-level reliability patterns,
-            before examining how delay exposure may be experienced unevenly across the city.
+            Bus reliability matters most where people depend on buses for access to education,
+            work, services, and everyday mobility.
           </p>
-        <!-- ANALYTICAL FRAMEWORK -->
-        <div class="content-card section-block framework-card">
-          <h4>Analytical Framework</h4>
+        </div>
+      </div>
 
-          <div class="framework-flow">
-            <div class="framework-step">
-              <span>01</span>
-              <strong>Accessibility</strong>
-              <p>Where can people reach?</p>
-            </div>
+      <div class="who-bus-chart">
+        <h4>Young people use buses more</h4>
+        <p class="chart-note">Share of trips by bus</p>
 
-            <div class="flow-arrow">→</div>
+        <div class="bar-row active">
+          <span>17–20</span>
+          <div class="bar"><i style="width: 100%;"></i></div>
+          <strong>15%</strong>
+        </div>
 
-            <div class="framework-step">
-              <span>02</span>
-              <strong>Reliability</strong>
-              <p>How dependable is the service?</p>
-            </div>
+        <div class="bar-row">
+          <span>21–29</span>
+          <div class="bar"><i style="width: 73%;"></i></div>
+          <strong>11%</strong>
+        </div>
 
-            <div class="flow-arrow">→</div>
+        <div class="bar-row">
+          <span>30–49</span>
+          <div class="bar"><i style="width: 47%;"></i></div>
+          <strong>7%</strong>
+        </div>
 
-            <div class="framework-step">
-              <span>03</span>
-              <strong>Delay Patterns</strong>
-              <p>Where and when does delay occur?</p>
-            </div>
+        <div class="bar-row">
+          <span>50–69</span>
+          <div class="bar"><i style="width: 40%;"></i></div>
+          <strong>6%</strong>
+        </div>
 
-            <div class="flow-arrow">→</div>
+        <div class="bar-row">
+          <span>70+</span>
+          <div class="bar"><i style="width: 33%;"></i></div>
+          <strong>5%</strong>
+        </div>
 
-            <div class="framework-step">
-              <span>04</span>
-              <strong>Uneven Mobility</strong>
-              <p>Who may experience greater burden?</p>
-            </div>
+        <p class="mini-source">Source: TRADS 2024 / transport evidence reports.</p>
+      </div>
+
+      <div class="who-bus-reasons">
+        <h4>Why this matters</h4>
+
+        <div class="reason-item">
+          <span>01</span>
+          <div>
+            <strong>Access to education</strong>
+            <p>Bus services connect young people to schools, colleges, universities, and training.</p>
           </div>
         </div>
 
-        <!-- WEBSITE JOURNEY -->
-        <div class="journey-card">
-          <h4>What this website shows</h4>
+        <div class="reason-item">
+          <span>02</span>
+          <div>
+            <strong>Access to work</strong>
+            <p>Many jobs are difficult to reach by walking or cycling alone.</p>
+          </div>
+        </div>
 
-          <div class="journey-grid">
-            <a href="#accessibility" class="journey-step">
-              <span>Step 1</span>
-              <strong>Understand the network</strong>
-              <p>Start with city-wide accessibility and transport context.</p>
-            </a>
+        <div class="reason-item">
+          <span>03</span>
+          <div>
+            <strong>Affordability</strong>
+            <p>Public transport is often the more affordable option for everyday travel.</p>
+          </div>
+        </div>
 
-            <a href="#delay" class="journey-step">
-              <span>Step 2</span>
-              <strong>Explore delay patterns</strong>
-              <p>Move into route-level and stop-level reliability analysis.</p>
-            </a>
-
-            <a href="#impact" class="journey-step">
-              <span>Step 3</span>
-              <strong>Reveal uneven mobility</strong>
-              <p>Compare delay exposure with socioeconomic vulnerability.</p>
-            </a>
+        <div class="reason-item">
+          <span>04</span>
+          <div>
+            <strong>Connecting communities</strong>
+            <p>Buses link neighbourhoods to services, town centres, and opportunities.</p>
           </div>
         </div>
       </div>
-    </section>
+    </div>
+
+    <!-- 03 RESEARCH QUESTIONS -->
+    <div class="overview-bridge-section">
+      <h3>Research Questions</h3>
+      <p class="section-note">
+        The analysis moves from locating delay patterns to understanding where unreliable service
+        may overlap with social and spatial vulnerability.
+      </p>
+
+      <div class="rq-editorial-grid">
+        <button class="rq-item active" data-rq="delay">
+          <span>01</span>
+          <strong>Where are delays concentrated?</strong>
+        </button>
+
+        <button class="rq-item" data-rq="reliability">
+          <span>02</span>
+          <strong>How does reliability vary?</strong>
+        </button>
+
+        <button class="rq-item" data-rq="inequality">
+          <span>03</span>
+          <strong>Where does vulnerability overlap?</strong>
+        </button>
+
+        <div class="rq-explanation" id="rq-explanation">
+          <h5>Where are delays concentrated?</h5>
+          <p>
+            We first locate delay hotspots across the bus network to understand where unreliable
+            service is most visible within Greater Manchester.
+          </p>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- 04 FRAMEWORK -->
+    <div class="overview-method-section">
+      <h3>How this study works</h3>
+      <p class="section-note">
+        The project connects transport accessibility, bus reliability, delay exposure, and uneven
+        mobility into one analytical workflow.
+      </p>
+
+      <div class="framework-flow">
+        <div class="framework-step">
+          <span>01</span>
+          <strong>Accessibility</strong>
+          <p>Where can people reach?</p>
+        </div>
+
+        <div class="flow-arrow">→</div>
+
+        <div class="framework-step">
+          <span>02</span>
+          <strong>Reliability</strong>
+          <p>How dependable is the service?</p>
+        </div>
+
+        <div class="flow-arrow">→</div>
+
+        <div class="framework-step">
+          <span>03</span>
+          <strong>Delay Patterns</strong>
+          <p>Where and when does delay occur?</p>
+        </div>
+
+        <div class="flow-arrow">→</div>
+
+        <div class="framework-step">
+          <span>04</span>
+          <strong>Uneven Mobility</strong>
+          <p>Who may experience greater burden?</p>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- 05 WEBSITE JOURNEY -->
+    <div class="journey-card">
+      <h3>Website Journey</h3>
+      <p class="section-note">
+        The website then moves into the analytical sections: accessibility, delay, and impact.
+      </p>
+
+      <div class="journey-grid">
+        <a href="#accessibility" class="journey-step">
+          <span>Step 1</span>
+          <strong>Understand the network</strong>
+          <p>Start with city-wide accessibility and transport context.</p>
+        </a>
+
+        <a href="#delay" class="journey-step">
+          <span>Step 2</span>
+          <strong>Explore delay patterns</strong>
+          <p>Move into route-level and stop-level reliability analysis.</p>
+        </a>
+
+        <a href="#impact" class="journey-step">
+          <span>Step 3</span>
+          <strong>Reveal uneven mobility</strong>
+          <p>Compare delay exposure with socioeconomic vulnerability.</p>
+        </a>
+      </div>
+    </div>
+
+  </div>
+</section>
 
     <!-- =========================
       3. ACCESSIBILITY & BUS NETWORK CONTEXT (MING)
