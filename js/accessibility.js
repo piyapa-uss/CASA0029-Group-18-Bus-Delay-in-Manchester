@@ -1054,6 +1054,10 @@ function injectGmalHeatmapStyles() {
     }
     .gmal-hm-lgd-note { flex: 1; min-width: 220px; line-height: 1.45; font-style: italic; }
 
+    #gmal-lad-heatmap + .impact-block,
+    #gmal-heatmap-insights {
+      margin-top: 28px;
+    }
     .gmal-hm-delta-title {
       margin: 26px 0 8px;
       font-size: 11px; font-weight: 700; color: #8b949e;
