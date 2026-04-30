@@ -81,9 +81,8 @@
         <!-- 01 OVERVIEW -->
         <p class="section-label">01</p>
         <h3>Why Manchester, and why bus matters</h3>
-        <p class="section-note">
-          Greater Manchester is a large city-region where mobility is uneven. This overview explains
-          why bus reliability matters for everyday access, opportunity, and transport inequality.
+        <p class="section-note overview-lead">
+          Greater Manchester is a major bus market within the North West of England. This overview sets the macro context for why bus reliability matters, before the analysis moves into accessibility, delay, and uneven mobility across Greater Manchester.
         </p>
 
         <div class="overview-hero-grid overview-data-grid">
@@ -91,17 +90,17 @@
             <div class="bus-journey-header">
               <div>
                 <p class="chart-kicker">Macro context</p>
-                <h4>Bus journeys across major English city-regions</h4>
+                <h4>Bus journeys across selected English city-regions</h4>
                 <p class="chart-note">Passenger journeys on local bus services, 2010–2025</p>
               </div>
             </div>
 
-            <div class="bus-legend">
+            <div class="bus-legend refined">
               <span class="legend-item gm"><i></i>Greater Manchester</span>
-              <span class="legend-item"><i></i>West Midlands</span>
-              <span class="legend-item"><i></i>West Yorkshire</span>
-              <span class="legend-item"><i></i>Merseyside</span>
-              <span class="legend-item"><i></i>South Yorkshire</span>
+              <span class="legend-item west-midlands"><i></i>West Midlands</span>
+              <span class="legend-item west-yorkshire"><i></i>West Yorkshire</span>
+              <span class="legend-item merseyside"><i></i>Merseyside</span>
+              <span class="legend-item south-yorkshire"><i></i>South Yorkshire</span>
             </div>
 
             <div id="bus-journey-chart"></div>
@@ -111,7 +110,14 @@
               <input id="bus-year-slider" type="range" min="2010" max="2025" value="2025" step="1" />
             </div>
 
-            <p class="mini-source">Source: Department for Transport bus statistics, cleaned from Ming’s dataset.</p>
+            <div class="chart-scope-note">
+              <strong>Scope note.</strong>
+              The chart compares selected combined authorities and city-regions. It does not represent all English regions.
+            </div>
+
+            <p class="mini-source">
+              Source: Department for Transport bus statistics.
+            </p>
           </div>
 
           <aside class="overview-side-context">
@@ -141,8 +147,8 @@
               </div>
             </div>
 
-            <div class="overview-mini-map-card">
-              <h4>Where Greater Manchester sits</h4>
+            <div class="overview-mini-map-card compact-map-card">
+              <h4>Regional context</h4>
 
               <svg id="overview-mini-map"></svg>
 
@@ -151,15 +157,14 @@
                 <span><i></i>Other English regions</span>
               </div>
 
-              <p class="mini-map-note">
-                Greater Manchester is shown within the North West region. Other English regions are provided as geographic context; only selected city-regions in the chart are linked to bus journey data.
+              <p id="mini-map-note" class="mini-map-note">
+                Greater Manchester CA sits within the North West region. The chart highlights selected city-regions in this regional context.
               </p>
             </div>
-
           </aside>
         </div>
 
-        <div class="overview-stat-row">
+        <div class="overview-stat-row compact">
           <div>
             <strong>33%</strong>
             <p>of daily trips are by bus</p>
@@ -172,121 +177,107 @@
             <strong>100k+</strong>
             <p>people are outside a 10-minute walk of frequent bus service</p>
           </div>
-          <div>
+          <div class="stat-keypoint">
             <strong>Key point</strong>
             <p>Bus reliability matters most where people depend on it for everyday access.</p>
           </div>
         </div>
 
-        <div class="scope-grid">
-          <div class="scope-chip">
-            <span>Scale</span>
-            <strong>Greater Manchester + LSOA</strong>
-          </div>
-
-          <div class="scope-chip">
-            <span>Focus</span>
-            <strong>Bus accessibility, delay, reliability</strong>
-          </div>
-
-          <div class="scope-chip">
-            <span>Interpretation</span>
-            <strong>Spatial overlap, not direct causality</strong>
-          </div>
-        </div>
-
-
         <!-- 02 WHO USES THE BUS -->
         <div class="who-bus-section">
-          <div class="who-bus-intro">
-        <h3>Who uses the bus?</h3>
-        <p>
-          Buses are used across many groups, but dependency is uneven. Some people rely on buses
-          more because they have fewer transport alternatives.
-        </p>
+          <div class="who-bus-top">
+            <div class="who-bus-intro">
+              <h3>Who uses the bus?</h3>
+              <p>
+                Buses are used across many groups, but dependency is uneven. Some people rely on buses
+                more because they have fewer transport alternatives.
+              </p>
 
-        <div class="key-insight-card">
-          <strong>Key insight</strong>
-          <p>
-            Bus reliability matters most where people depend on buses for access to education,
-            work, services, and everyday mobility.
-          </p>
-        </div>
-      </div>
+              <div class="key-insight-card">
+                <strong>Key insight</strong>
+                <p>
+                  Bus reliability matters most where people depend on buses for access to education,
+                  work, services, and everyday mobility.
+                </p>
+              </div>
+            </div>
 
-      <div class="who-bus-chart">
-        <h4>Young people use buses more</h4>
-        <p class="chart-note">Share of trips by bus</p>
+            <div class="who-bus-chart">
+              <h4>Young people use buses more</h4>
+              <p class="chart-note">Share of trips by bus</p>
 
-        <div class="bar-row active">
-          <span>17–20</span>
-          <div class="bar"><i style="width: 100%;"></i></div>
-          <strong>15%</strong>
-        </div>
+              <div class="bar-row active">
+                <span>17–20</span>
+                <div class="bar"><i style="width: 100%;"></i></div>
+                <strong>15%</strong>
+              </div>
 
-        <div class="bar-row">
-          <span>21–29</span>
-          <div class="bar"><i style="width: 73%;"></i></div>
-          <strong>11%</strong>
-        </div>
+              <div class="bar-row">
+                <span>21–29</span>
+                <div class="bar"><i style="width: 73%;"></i></div>
+                <strong>11%</strong>
+              </div>
 
-        <div class="bar-row">
-          <span>30–49</span>
-          <div class="bar"><i style="width: 47%;"></i></div>
-          <strong>7%</strong>
-        </div>
+              <div class="bar-row">
+                <span>30–49</span>
+                <div class="bar"><i style="width: 47%;"></i></div>
+                <strong>7%</strong>
+              </div>
 
-        <div class="bar-row">
-          <span>50–69</span>
-          <div class="bar"><i style="width: 40%;"></i></div>
-          <strong>6%</strong>
-        </div>
+              <div class="bar-row">
+                <span>50–69</span>
+                <div class="bar"><i style="width: 40%;"></i></div>
+                <strong>6%</strong>
+              </div>
 
-        <div class="bar-row">
-          <span>70+</span>
-          <div class="bar"><i style="width: 33%;"></i></div>
-          <strong>5%</strong>
-        </div>
+              <div class="bar-row">
+                <span>70+</span>
+                <div class="bar"><i style="width: 33%;"></i></div>
+                <strong>5%</strong>
+              </div>
 
-        <p class="mini-source">Source: TRADS 2024 / transport evidence reports.</p>
-      </div>
+              <p class="mini-source">Source: TRADS 2024 / transport evidence reports.</p>
+            </div>
+          </div>
 
-      <div class="who-bus-reasons">
-        <h4>Why this matters</h4>
+          <div class="who-bus-reasons">
+            <h4>Why this matters</h4>
 
-        <div class="reason-item">
-          <span>01</span>
-          <div>
-            <strong>Access to education</strong>
-            <p>Bus services connect young people to schools, colleges, universities, and training.</p>
+            <div class="reason-grid">
+              <div class="reason-item">
+                <span>01</span>
+                <div>
+                  <strong>Access to education</strong>
+                  <p>Bus services connect young people to schools, colleges, universities, and training.</p>
+                </div>
+              </div>
+
+              <div class="reason-item">
+                <span>02</span>
+                <div>
+                  <strong>Access to work</strong>
+                  <p>Many jobs are difficult to reach by walking or cycling alone.</p>
+                </div>
+              </div>
+
+              <div class="reason-item">
+                <span>03</span>
+                <div>
+                  <strong>Affordability</strong>
+                  <p>Public transport is often the more affordable option for everyday travel.</p>
+                </div>
+              </div>
+
+              <div class="reason-item">
+                <span>04</span>
+                <div>
+                  <strong>Connecting communities</strong>
+                  <p>Buses link neighbourhoods to services, town centres, and opportunities.</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-
-        <div class="reason-item">
-          <span>02</span>
-          <div>
-            <strong>Access to work</strong>
-            <p>Many jobs are difficult to reach by walking or cycling alone.</p>
-          </div>
-        </div>
-
-        <div class="reason-item">
-          <span>03</span>
-          <div>
-            <strong>Affordability</strong>
-            <p>Public transport is often the more affordable option for everyday travel.</p>
-          </div>
-        </div>
-
-        <div class="reason-item">
-          <span>04</span>
-          <div>
-            <strong>Connecting communities</strong>
-            <p>Buses link neighbourhoods to services, town centres, and opportunities.</p>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- 03 RESEARCH QUESTIONS -->
     <div class="overview-bridge-section">
@@ -792,32 +783,40 @@
           <div class="team-card">
             <div class="card-front">
               <p>Jacob Echele</p>
-              <span>Email: jacob.echele@example.com</span>
             </div>
             <div class="card-back">
-              <img src="images/team/jacob.jpg" alt="">
+              <div class="card-back-content">
+                <span>Email</span>
+                <p>jacob.echele.25@ucl.ac.uk</p>
+              </div>
             </div>
           </div>
 
           <div class="team-card">
             <div class="card-front">
               <p>Kongtup Wanichjaroenporn</p>
-              <span>Email: kongtup.wanichjaroenporn.25@ucl.ac.uk</span>
             </div>
             <div class="card-back">
-              <img src="images/team/kongtup.jpg" alt="">
+              <div class="card-back-content">
+                <span>Email</span>
+                <p>kongtup.wanichjaroenporn.22@ucl.ac.uk</p>
+              </div>
             </div>
           </div>
 
           <div class="team-card">
             <div class="card-front">
               <p>Piyapa Sotthiwat</p>
-              <span>Email: piyapa.sotthiwat.25@ucl.ac.uk</span>
             </div>
             <div class="card-back">
-              <img src="images/team/puk.jpg" alt="">
+              <div class="card-back-content">
+                <span>Email</span>
+                <p>piyapa.sotthiwat.25@ucl.ac.uk</p>
+              </div>
             </div>
           </div>
+
+        </div>
         </div>
       </div>
 

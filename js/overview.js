@@ -11,10 +11,10 @@ let highlightChartAreas = null;
 
 const AREA_COLORS = {
   "Greater Manchester": "#ff4b25",
-  "West Midlands": "#b8b8b8",
-  "West Yorkshire": "#c9c9c9",
-  "Merseyside": "#dddddd",
-  "South Yorkshire": "#eeeeee"
+  "West Midlands": "#9f9f9f",
+  "West Yorkshire": "#b8b8b8",
+  "Merseyside": "#d0d0d0",
+  "South Yorkshire": "#e5e5e5"
 };
 
 const AREAS = [
@@ -25,7 +25,7 @@ const AREAS = [
   "Greater Manchester"
 ];
 
-// NUTS1 region → city-regions shown in the chart
+// NUTS1 region → selected city-regions shown in the chart
 const REGION_TO_AREAS = {
   "North West": ["Greater Manchester", "Merseyside"],
   "West Midlands": ["West Midlands"],
@@ -55,7 +55,7 @@ async function initBusJourneyChart() {
     .append("svg")
     .attr("viewBox", `0 0 ${width} ${height}`)
     .attr("role", "img")
-    .attr("aria-label", "Stacked area chart showing bus journeys by city-region from 2010 to 2025");
+    .attr("aria-label", "Stacked area chart showing bus journeys by selected English city-regions from 2010 to 2025");
 
   const chartWidth = width - margin.left - margin.right;
   const chartHeight = height - margin.top - margin.bottom;
@@ -67,7 +67,9 @@ async function initBusJourneyChart() {
     d3.group(data, d => d.year),
     ([year, rows]) => {
       const obj = { year };
-      rows.forEach(r => obj[r.area] = r.journeys);
+      rows.forEach(r => {
+        obj[r.area] = r.journeys;
+      });
       return obj;
     }
   ).sort((a, b) => a.year - b.year);
@@ -94,6 +96,7 @@ async function initBusJourneyChart() {
     .y1(d => y(d[1]))
     .curve(d3.curveMonotoneX);
 
+  // Grid
   g.append("g")
     .attr("class", "bus-grid")
     .call(
@@ -103,16 +106,18 @@ async function initBusJourneyChart() {
         .tickFormat("")
     );
 
+  // Areas
   const paths = g.selectAll(".bus-area")
     .data(stacked)
     .join("path")
     .attr("class", d => `bus-area area-${slugify(d.key)}`)
     .attr("fill", d => AREA_COLORS[d.key])
-    .attr("opacity", d => d.key === "Greater Manchester" ? 0.96 : 0.72)
-    .attr("stroke", d => d.key === "Greater Manchester" ? "#d83f1f" : "rgba(0,0,0,0.08)")
-    .attr("stroke-width", d => d.key === "Greater Manchester" ? 2.2 : 0.7)
+    .attr("opacity", d => d.key === "Greater Manchester" ? 0.96 : 0.62)
+    .attr("stroke", d => d.key === "Greater Manchester" ? "rgba(255,75,37,0.75)" : "rgba(0,0,0,0.06)")
+    .attr("stroke-width", d => d.key === "Greater Manchester" ? 1.2 : 0.35)
     .attr("d", area);
 
+  // Reveal animation
   const clipId = "bus-chart-reveal";
   const clip = g.append("clipPath")
     .attr("id", clipId)
@@ -122,6 +127,7 @@ async function initBusJourneyChart() {
 
   paths.attr("clip-path", `url(#${clipId})`);
 
+  // Axes
   g.append("g")
     .attr("class", "bus-axis bus-axis-x")
     .attr("transform", `translate(0,${chartHeight})`)
@@ -139,6 +145,7 @@ async function initBusJourneyChart() {
         .tickFormat(d => `${d}M`)
     );
 
+  // Year marker
   const marker = g.append("line")
     .attr("class", "bus-year-marker")
     .attr("y1", 0)
@@ -150,23 +157,7 @@ async function initBusJourneyChart() {
     .append("div")
     .attr("class", "bus-tooltip");
 
-  function updateYear(selectedYear) {
-    yearLabel.text(selectedYear);
-
-    const revealWidth = x(selectedYear);
-
-    clip.transition()
-      .duration(220)
-      .ease(d3.easeCubicOut)
-      .attr("width", revealWidth);
-
-    marker.transition()
-      .duration(220)
-      .attr("x1", revealWidth)
-      .attr("x2", revealWidth);
-
-    updateTooltip(selectedYear, "Greater Manchester");
-  }
+  let currentFocusArea = "Greater Manchester";
 
   function updateTooltip(year, focusArea) {
     const focus = data.find(d => d.year === year && d.area === focusArea);
@@ -184,26 +175,48 @@ async function initBusJourneyChart() {
     `);
   }
 
+  function updateYear(selectedYear) {
+    yearLabel.text(selectedYear);
+
+    const revealWidth = x(selectedYear);
+
+    clip.transition()
+      .duration(220)
+      .ease(d3.easeCubicOut)
+      .attr("width", revealWidth);
+
+    marker.transition()
+      .duration(220)
+      .attr("x1", revealWidth)
+      .attr("x2", revealWidth);
+
+    updateTooltip(selectedYear, currentFocusArea);
+  }
+
   slider.on("input", function () {
     updateYear(+this.value);
   });
 
   highlightChartAreas = function (areasToHighlight, label) {
     const selectedYear = +slider.property("value");
+    const activeAreas = areasToHighlight.length ? areasToHighlight : ["Greater Manchester"];
+    currentFocusArea = activeAreas[0];
 
     paths.transition()
       .duration(280)
-      .attr("opacity", d => areasToHighlight.includes(d.key) ? 0.96 : 0.16)
-      .attr("stroke-width", d => areasToHighlight.includes(d.key) ? 2.4 : 0.4)
-      .attr("stroke", d => areasToHighlight.includes(d.key) ? "#222" : "rgba(0,0,0,0.08)");
+      .attr("opacity", d => activeAreas.includes(d.key) ? 0.96 : 0.18)
+      .attr("stroke-width", d => activeAreas.includes(d.key) ? 1.4 : 0.3)
+      .attr("stroke", d => activeAreas.includes(d.key) ? "rgba(255,75,37,0.75)" : "rgba(0,0,0,0.06)");
 
-    const firstArea = areasToHighlight[0] || "Greater Manchester";
-    updateTooltip(selectedYear, firstArea);
+    updateTooltip(selectedYear, currentFocusArea);
 
-    console.log("Map selected:", label, "→ chart areas:", areasToHighlight);
+    console.log("Map selected:", label, "→ chart areas:", activeAreas);
   };
 
   updateYear(+slider.property("value"));
+
+  // Initial chart focus = Greater Manchester only, not the whole North West
+  highlightChartAreas(["Greater Manchester"], "Greater Manchester");
 }
 
 async function initMiniMap() {
@@ -212,7 +225,7 @@ async function initMiniMap() {
 
   const node = svg.node();
   const width = node.clientWidth || 260;
-  const height = node.clientHeight || 260;
+  const height = node.clientHeight || 250;
 
   svg.selectAll("*").remove();
 
@@ -230,21 +243,56 @@ async function initMiniMap() {
     .style("pointer-events", "none")
     .style("opacity", 0);
 
-  function setActive(region) {
-    svg.selectAll(".mini-region")
-      .classed("active", d => d.properties.region_clean === region);
+  function updateMapNote(region, chartAreas) {
+    const note = document.getElementById("mini-map-note");
+    if (!note) return;
 
+    if (region === "North West") {
+      note.textContent =
+        "Greater Manchester CA sits within the North West region. The chart highlights selected city-regions in this regional context.";
+      return;
+    }
+
+    if (chartAreas.length) {
+      note.textContent =
+        `${region} is linked to selected city-regions included in the chart.`;
+      return;
+    }
+
+    note.textContent =
+      `${region} is outside the selected chart scope. The chart focuses on Greater Manchester CA and comparable combined authorities.`;
+  }
+
+  function setActive(region) {
     const chartAreas = REGION_TO_AREAS[region] || [];
 
-    if (highlightChartAreas && chartAreas.length) {
-      highlightChartAreas(chartAreas, region);
+    svg.selectAll(".mini-region")
+      .classed("active-focus", d => d.properties.region_clean === "North West")
+      .classed("active-linked", d =>
+        d.properties.region_clean === region &&
+        region !== "North West" &&
+        chartAreas.length > 0
+      )
+      .classed("active-outscope", d =>
+        d.properties.region_clean === region &&
+        chartAreas.length === 0
+      );
+
+    if (highlightChartAreas) {
+      if (chartAreas.length) {
+        highlightChartAreas(chartAreas, region);
+      } else {
+        highlightChartAreas(["Greater Manchester"], "Greater Manchester");
+      }
     }
+
+    updateMapNote(region, chartAreas);
   }
 
   svg.selectAll("path")
     .data(geo.features)
     .join("path")
-    .attr("class", d => `mini-region ${d.properties.region_clean === "North West" ? "active" : ""}`)
+    .attr("class", "mini-region")
     .attr("d", path)
     .attr("data-region", d => d.properties.region_clean)
     .on("click", function (event, d) {
@@ -267,7 +315,7 @@ async function initMiniMap() {
       tooltip.style("opacity", 0);
     });
 
-  // Default: North West because Greater Manchester is there
+  // Default visual map focus = North West, because Greater Manchester is located there
   setActive("North West");
 }
 
