@@ -503,8 +503,28 @@
 
         <div class="content-card section-block">
           <h4>Key Takeaway</h4>
+
           <p>
-            Puk + Ming: add 2–3 sentences summarising what the accessibility layer reveals.
+            The accessibility layer reveals a transport geography that is both
+            structurally uneven and visibly weakening. Public transport reach
+            concentrates heavily on the central core, where Manchester's overall
+            GMAL score runs around three times higher than that of any other
+            borough in both 2016 and 2026. The outer boroughs of Wigan, Rochdale
+            and Oldham anchor the bottom of the distribution, where limited rail
+            and Metrolink provision leaves the bus network as the principal
+            channel of access.
+          </p>
+
+          <p>
+            Comparing the two years, every borough loses overall accessibility,
+            with an average decline of approximately twenty per cent. The fall
+            is driven almost entirely by reductions in bus scores, and the modest
+            rail gains visible in Stockport and Bolton offset only a fraction of
+            the borough-wide loss. The combined picture frames the analytical
+            question that follows. If the bus network is both the dominant mode
+            of access across Greater Manchester and the component most exposed
+            to decline, then its day-to-day reliability becomes the central
+            determinant of how much of the city its residents can actually reach.
           </p>
         </div>
       </div>
@@ -559,15 +579,76 @@
 
         <div class="content-card section-block">
           <h4>Network Overview &amp; Route Drill-down</h4>
+          <p class="chart-note">
+            Use the search box to look up a route number or a specific stop,
+            or click a route directly on the map or in the sidebar ranking
+            to open its full route detail, including stop-level
+            scatter, weekday vs. weekend heatmap, and a direction toggle.
+          </p>
           <div id="delay-dashboard" class="embed-shell large-shell">
             Loading delay dashboard&hellip;
           </div>
+
+          <p class="chart-kicker" style="margin-top:1em">A few routes worth a look</p>
+          <p class="chart-note">
+            Several lines stand out across the 265 (route, direction) pairs
+            covered here. Routes 33, 389 and 396 sit near the bottom of the
+            ranking with median delays of around five to six minutes, which
+            means roughly half of every arrival on those lines is at least
+            five minutes late. Route 632 sits at the other end and actually
+            runs a touch ahead of schedule on average. The two directions of
+            the same line can also behave very differently. Route 192 carries
+            a 1.6 minute median in one direction but only 0.8 minutes in the
+            other, which is why the dashboard now treats each direction as
+            its own record. Try clicking those names in the ranking sidebar,
+            or searching for them in the box above, to inspect them stop by
+            stop.
+          </p>
         </div>
 
         <div class="content-card section-block">
           <h4>Key Takeaway</h4>
           <p>
-            Puk + Ming: add 2–3 sentences on how delay varies across routes, places, and time periods.
+            Read at the city scale through the heatmap overlay, the dashboard
+            tells a clear geographic story. Median delay is comparatively
+            contained across central Manchester and Salford, where the typical
+            heatmap cell sits between one and two minutes. The combination of
+            dense service, competing routes and short feeder distances means
+            that buses recover quickly from a single disruption and arrivals
+            stay close to schedule. The picture changes as the heatmap moves
+            outwards. In the outer Local Authority Districts of Oldham,
+            Rochdale, Bury and Wigan the same statistic rises consistently into
+            the four to six minute range, because long peripheral corridors
+            leave very little slack for buses to make up time after they fall
+            behind, and there are fewer parallel services to absorb a single
+            late vehicle.
+          </p>
+          <p>
+            The temporal slicing reinforces the geography. Most routes run
+            closest to schedule in the AM peak, when timetables are deliberately
+            padded for traffic, and drift later through the day, with PM peak
+            and PM off-peak the most fragile windows. A small subset of
+            school-only and demand-responsive lines do not operate in AM
+            off-peak at all, and the dashboard now surfaces these as
+            &ldquo;no service&rdquo; rather than misreading them as 0% on-time,
+            which is an important distinction between a route that fails its
+            timetable and one that simply is not there. Across the network as a
+            whole, only 78 of the 265 records manage on-time arrivals more than
+            30% of the time at the strict &plusmn;1 minute tolerance the source
+            feed uses, which suggests low-grade lateness is the
+            network&rsquo;s default state rather than its exception.
+          </p>
+          <p>
+            Read together, these patterns carry the project&rsquo;s argument
+            forward. The same outer neighbourhoods that the
+            <a href="#accessibility">accessibility</a> layer already showed to
+            be structurally underserved are also the ones where buses arrive
+            least predictably. That sets up the
+            <a href="#impact">Impact</a> section&rsquo;s mapping of
+            unreliability onto deprivation, where the everyday-mobility
+            backbone introduced in the
+            <a href="#overview">overview</a> is shown to be most stretched
+            exactly where it is needed most.
           </p>
         </div>
       </div>
