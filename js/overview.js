@@ -1,11 +1,36 @@
 // ================================
-// OVERVIEW STACKED AREA CHART (PUK)
-// D3 macro context: bus journeys by major English city-region
+// OVERVIEW: D3 stacked area + mini England region map
 // ================================
 
 document.addEventListener("DOMContentLoaded", () => {
   initBusJourneyChart();
+  initMiniMap();
 });
+
+let highlightChartAreas = null;
+
+const AREA_COLORS = {
+  "Greater Manchester": "#ff4b25",
+  "West Midlands": "#b8b8b8",
+  "West Yorkshire": "#c9c9c9",
+  "Merseyside": "#dddddd",
+  "South Yorkshire": "#eeeeee"
+};
+
+const AREAS = [
+  "Merseyside",
+  "South Yorkshire",
+  "West Yorkshire",
+  "West Midlands",
+  "Greater Manchester"
+];
+
+// NUTS1 region → city-regions shown in the chart
+const REGION_TO_AREAS = {
+  "North West": ["Greater Manchester", "Merseyside"],
+  "West Midlands": ["West Midlands"],
+  "Yorkshire and The Humber": ["West Yorkshire", "South Yorkshire"]
+};
 
 async function initBusJourneyChart() {
   const container = d3.select("#bus-journey-chart");
@@ -19,22 +44,6 @@ async function initBusJourneyChart() {
     area: d.area,
     journeys: +d.journeys
   }));
-
-  const areas = [
-    "Merseyside",
-    "South Yorkshire",
-    "West Yorkshire",
-    "West Midlands",
-    "Greater Manchester"
-  ];
-
-  const areaColors = {
-    "Greater Manchester": "#ff4b25",
-    "West Midlands": "#b8b8b8",
-    "West Yorkshire": "#c9c9c9",
-    "Merseyside": "#dddddd",
-    "South Yorkshire": "#eeeeee"
-  };
 
   const margin = { top: 28, right: 28, bottom: 42, left: 54 };
   const width = 720;
@@ -51,17 +60,14 @@ async function initBusJourneyChart() {
   const chartWidth = width - margin.left - margin.right;
   const chartHeight = height - margin.top - margin.bottom;
 
-  const g = svg
-    .append("g")
+  const g = svg.append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
   const wideData = Array.from(
     d3.group(data, d => d.year),
     ([year, rows]) => {
       const obj = { year };
-      rows.forEach(r => {
-        obj[r.area] = r.journeys;
-      });
+      rows.forEach(r => obj[r.area] = r.journeys);
       return obj;
     }
   ).sort((a, b) => a.year - b.year);
@@ -71,14 +77,12 @@ async function initBusJourneyChart() {
     .range([0, chartWidth]);
 
   const y = d3.scaleLinear()
-    .domain([0, d3.max(wideData, d =>
-      d3.sum(areas, area => d[area] || 0)
-    )])
+    .domain([0, d3.max(wideData, d => d3.sum(AREAS, area => d[area] || 0))])
     .nice()
     .range([chartHeight, 0]);
 
   const stack = d3.stack()
-    .keys(areas)
+    .keys(AREAS)
     .order(d3.stackOrderNone)
     .offset(d3.stackOffsetNone);
 
@@ -90,7 +94,6 @@ async function initBusJourneyChart() {
     .y1(d => y(d[1]))
     .curve(d3.curveMonotoneX);
 
-  // Grid
   g.append("g")
     .attr("class", "bus-grid")
     .call(
@@ -100,32 +103,25 @@ async function initBusJourneyChart() {
         .tickFormat("")
     );
 
-  // Areas
   const paths = g.selectAll(".bus-area")
     .data(stacked)
     .join("path")
-    .attr("class", d => `bus-area ${d.key === "Greater Manchester" ? "is-manchester" : ""}`)
-    .attr("fill", d => areaColors[d.key])
+    .attr("class", d => `bus-area area-${slugify(d.key)}`)
+    .attr("fill", d => AREA_COLORS[d.key])
     .attr("opacity", d => d.key === "Greater Manchester" ? 0.96 : 0.72)
     .attr("stroke", d => d.key === "Greater Manchester" ? "#d83f1f" : "rgba(0,0,0,0.08)")
     .attr("stroke-width", d => d.key === "Greater Manchester" ? 2.2 : 0.7)
     .attr("d", area);
 
-  // Reveal animation
+  const clipId = "bus-chart-reveal";
   const clip = g.append("clipPath")
-    .attr("id", "bus-chart-reveal")
+    .attr("id", clipId)
     .append("rect")
     .attr("width", 0)
     .attr("height", chartHeight);
 
-  paths.attr("clip-path", "url(#bus-chart-reveal)");
+  paths.attr("clip-path", `url(#${clipId})`);
 
-  clip.transition()
-    .duration(1400)
-    .ease(d3.easeCubicOut)
-    .attr("width", chartWidth);
-
-  // Axes
   g.append("g")
     .attr("class", "bus-axis bus-axis-x")
     .attr("transform", `translate(0,${chartHeight})`)
@@ -143,7 +139,6 @@ async function initBusJourneyChart() {
         .tickFormat(d => `${d}M`)
     );
 
-  // Vertical year marker
   const marker = g.append("line")
     .attr("class", "bus-year-marker")
     .attr("y1", 0)
@@ -160,33 +155,32 @@ async function initBusJourneyChart() {
 
     const revealWidth = x(selectedYear);
 
-    clip
-        .transition()
-        .duration(220)
-        .ease(d3.easeCubicOut)
-        .attr("width", revealWidth);
-    
-    marker
-      .transition()
+    clip.transition()
       .duration(220)
-      .attr("x1", x(selectedYear))
-      .attr("x2", x(selectedYear));
+      .ease(d3.easeCubicOut)
+      .attr("width", revealWidth);
 
-    const gm = data.find(d =>
-      d.year === selectedYear && d.area === "Greater Manchester"
-    );
+    marker.transition()
+      .duration(220)
+      .attr("x1", revealWidth)
+      .attr("x2", revealWidth);
 
+    updateTooltip(selectedYear, "Greater Manchester");
+  }
+
+  function updateTooltip(year, focusArea) {
+    const focus = data.find(d => d.year === year && d.area === focusArea);
     const ranked = data
-      .filter(d => d.year === selectedYear)
+      .filter(d => d.year === year)
       .sort((a, b) => b.journeys - a.journeys);
 
-    const rank = ranked.findIndex(d => d.area === "Greater Manchester") + 1;
+    const rank = ranked.findIndex(d => d.area === focusArea) + 1;
 
     tooltip.html(`
-      <strong>${selectedYear}</strong>
-      <span>Greater Manchester</span>
-      <b>${gm ? gm.journeys.toFixed(1) : "--"}M journeys</b>
-      <em>Rank ${rank} of ${ranked.length} selected city-regions</em>
+      <strong>${year}</strong>
+      <span>${focusArea}</span>
+      <b>${focus ? focus.journeys.toFixed(1) : "--"}M journeys</b>
+      <em>${rank > 0 ? `Rank ${rank} of ${ranked.length}` : "Not shown in selected chart"}</em>
     `);
   }
 
@@ -194,70 +188,89 @@ async function initBusJourneyChart() {
     updateYear(+this.value);
   });
 
+  highlightChartAreas = function (areasToHighlight, label) {
+    const selectedYear = +slider.property("value");
+
+    paths.transition()
+      .duration(280)
+      .attr("opacity", d => areasToHighlight.includes(d.key) ? 0.96 : 0.16)
+      .attr("stroke-width", d => areasToHighlight.includes(d.key) ? 2.4 : 0.4)
+      .attr("stroke", d => areasToHighlight.includes(d.key) ? "#222" : "rgba(0,0,0,0.08)");
+
+    const firstArea = areasToHighlight[0] || "Greater Manchester";
+    updateTooltip(selectedYear, firstArea);
+
+    console.log("Map selected:", label, "→ chart areas:", areasToHighlight);
+  };
+
   updateYear(+slider.property("value"));
 }
 
-// Mini map of UK city-regions (Macro context for bus journeys chart)
-initMiniMap();
-
-function initMiniMap() {
+async function initMiniMap() {
   const svg = d3.select("#overview-mini-map");
-  if (!svg.node()) return;
+  if (svg.empty()) return;
 
-  const width = svg.node().clientWidth;
-  const height = svg.node().clientHeight;
+  const node = svg.node();
+  const width = node.clientWidth || 260;
+  const height = node.clientHeight || 260;
+
+  svg.selectAll("*").remove();
+
+  const geo = await d3.json("data/overview/regions_england.geojson");
 
   const projection = d3.geoMercator()
-    .center([-2, 53])
-    .scale(2200)
-    .translate([width / 2, height / 2]);
+    .fitSize([width, height], geo);
 
   const path = d3.geoPath().projection(projection);
 
-  d3.json("data/overview/regions_england.geojson").then(data => {
+  const tooltip = d3.select("body")
+    .append("div")
+    .attr("class", "mini-map-tooltip")
+    .style("position", "fixed")
+    .style("pointer-events", "none")
+    .style("opacity", 0);
 
-    let selected = "Greater Manchester"; // default
+  function setActive(region) {
+    svg.selectAll(".mini-region")
+      .classed("active", d => d.properties.region_clean === region);
 
-    svg.selectAll("path")
-      .data(data.features)
-      .enter()
-      .append("path")
-      .attr("d", path)
-      .attr("fill", d =>
-        d.properties.region_clean === selected ? "#ff4b25" : "#d9d9d9"
-      )
-      .attr("stroke", "#fff")
-      .attr("stroke-width", 1)
-      .style("cursor", "pointer")
+    const chartAreas = REGION_TO_AREAS[region] || [];
 
-      // CLICK INTERACTION
-      .on("click", function (event, d) {
-        selected = d.properties.region_clean;
+    if (highlightChartAreas && chartAreas.length) {
+      highlightChartAreas(chartAreas, region);
+    }
+  }
 
-        // highlight map
-        svg.selectAll("path")
-          .transition()
-          .duration(300)
-          .attr("fill", p =>
-            p.properties.region_clean === selected
-              ? "#ff4b25"
-              : "#d9d9d9"
-          );
+  svg.selectAll("path")
+    .data(geo.features)
+    .join("path")
+    .attr("class", d => `mini-region ${d.properties.region_clean === "North West" ? "active" : ""}`)
+    .attr("d", path)
+    .attr("data-region", d => d.properties.region_clean)
+    .on("click", function (event, d) {
+      setActive(d.properties.region_clean);
+    })
+    .on("mouseover", function (event, d) {
+      d3.select(this).classed("hovered", true);
 
-        // CONNECT TO CHART
-        updateChart(selected);
-      })
+      tooltip
+        .style("opacity", 1)
+        .html(`<strong>${d.properties.region_clean}</strong>`);
+    })
+    .on("mousemove", function (event) {
+      tooltip
+        .style("left", `${event.clientX + 12}px`)
+        .style("top", `${event.clientY + 12}px`);
+    })
+    .on("mouseout", function () {
+      d3.select(this).classed("hovered", false);
+      tooltip.style("opacity", 0);
+    });
 
-      // hover effect
-      .on("mouseover", function () {
-        d3.select(this).attr("opacity", 0.7);
-      })
-      .on("mouseout", function () {
-        d3.select(this).attr("opacity", 1);
-      });
-  });
+  // Default: North West because Greater Manchester is there
+  setActive("North West");
 }
 
-function updateChart(region) {
-  console.log("Selected:", region);
+function slugify(text) {
+  return text.toLowerCase().replace(/\s+/g, "-");
 }

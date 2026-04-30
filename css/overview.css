@@ -1047,3 +1047,28 @@
 .dot.active {
   background: #ff4b25;
 }
+
+.mini-region {
+  fill: #d9d9d9;
+  stroke: #ffffff;
+  stroke-width: 1.2;
+  cursor: pointer;
+  transition: fill 0.2s ease, opacity 0.2s ease;
+}
+
+.mini-region.hovered {
+  fill: #ffb29c;
+}
+
+.mini-region.active {
+  fill: #ff4b25;
+}
+
+.mini-map-tooltip {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(17,17,17,0.9);
+  color: #fff;
+  font-size: 0.78rem;
+  z-index: 9999;
+}

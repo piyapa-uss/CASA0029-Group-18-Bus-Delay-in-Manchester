@@ -15,19 +15,6 @@
 </head>
 
 <body>
-  <!-- Right circular navigation: hidden on hero, appears after scroll -->
-  <div class="orb-nav hidden-on-hero">
-    <div class="orb-nav-inner">
-      <div class="orb-nav-title">Navigate</div>
-      <a class="orb-link home" href="#hero">Home</a>
-      <a class="orb-link overview" href="#overview">Overview</a>
-      <a class="orb-link accessibility" href="#accessibility">Access</a>
-      <a class="orb-link delay" href="#delay">Delay</a>
-      <a class="orb-link impact" href="#impact">Impact</a>
-      <a class="orb-link about" href="#about">About</a>
-    </div>
-  </div>
-
   <main>
     <!-- =========================
       1. HERO / LANDING (PUK)
@@ -47,6 +34,7 @@
           <a href="#accessibility">Accessibility</a>
           <a href="#delay">Delay</a>
           <a href="#impact">Impact</a>
+          <a href="#conclusion">Conclusion</a>
           <a href="#about">About</a>
         </nav>
       </header>
@@ -154,19 +142,20 @@
             </div>
 
             <div class="overview-mini-map-card">
+              <h4>Where Greater Manchester sits</h4>
+
               <svg id="overview-mini-map"></svg>
 
               <div class="mini-map-legend">
-                <span class="dot active"></span> Selected
-                <span class="dot"></span> Others
+                <span><i class="gm"></i>North West / Greater Manchester context</span>
+                <span><i></i>Other English regions</span>
               </div>
+
+              <p class="mini-map-note">
+                Greater Manchester is shown within the North West region. Other English regions are provided as geographic context; only selected city-regions in the chart are linked to bus journey data.
+              </p>
             </div>
 
-              <div class="mini-map-legend">
-                <span><i class="gm"></i>Greater Manchester</span>
-                <span><i></i>Other city-regions</span>
-              </div>
-            </div>
           </aside>
         </div>
 
@@ -403,7 +392,6 @@
         </a>
       </div>
     </div>
-     <script src="js/about.js"></script>
   </div>
 </section>
 
@@ -637,11 +625,31 @@
     </section>
 
     <!-- =========================
-      6. ABOUT / METHODOLOGY / DATA (ALL)
+      6. Conclusion 
+    ========================== -->
+    <section id="conclusion" class="panel panel-dark">
+      <div class="section-inner">
+        <p class="section-label">05</p>
+        <h3>Conclusion</h3>
+        <p class="section-note">
+          This project has investigated bus delay and reliability across Greater Manchester, asking where delays occur, how they vary across the network, and how unreliable service may shape everyday mobility. The analysis connects transport accessibility, bus reliability, delay exposure, and uneven mobility into one analytical workflow.
+        </p>
+
+        <div class="content-card section-block">
+          <h4>Final Thoughts</h4>
+          <p>
+            Ming: add 2–3 sentences reflecting on the overall findings and implications of the project.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================
+      7. ABOUT / METHODOLOGY / DATA (ALL)
     ========================== -->
     <section id="about" class="about-section">
       <div class="about-heading">
-        <p class="section-label">05</p>
+        <p class="section-label">06</p>
         <h3>About</h3>
       </div>
 
@@ -658,7 +666,7 @@
         <article class="about-folder">
           <div class="folder-tab">B · Datasets</div>
           <h3>Datasets</h3>
-          <p class="about-content">
+          <div class="about-content">
             <p>
               <a href="https://www.data.gov.uk/dataset/d9dfbf0a-3cd7-4b12-a39f-0ec717423ee4/gm-accessibility-levels" target="_blank">Greater Manchester Accessibility Levels (GMAL)</a>,
               <a href="https://assets.publishing.service.gov.uk/media/691ded34513046b952c500bd/File_5_IoD2025_Scores_for_the_Indices_of_Deprivation.xlsx" target="_blank">Indices of Deprivation (IoD) 2025</a>,
@@ -666,7 +674,7 @@
               <a href="https://tfgm.com/data-analytics-and-insight/open-data-portal" target="_blank">Transport for Greater Manchester (TfGM) Open Data Portal</a>,
               <a href="https://assets.ctfassets.net/nv7y93idf4jq/5dMjk40s4A16mva8Hkanjv/7a04763ded3268fc3012d1afe010de8a/TRADS_2024_Main_Report_-_final_version.pdf" target="_blank">Transport for Greater Manchester Travel Recency and Attitudes Survey (TRADS) 2024</a>
             </p>
-          </p>
+          </div>
         </article>
 
         <article class="about-folder">
@@ -751,5 +759,6 @@
   <script src="js/accessibility.js"></script>
   <script src="js/delay.js"></script>
   <script src="js/impact.js"></script>
+  <script src="js/about.js"></script>
 </body>
 </html>
