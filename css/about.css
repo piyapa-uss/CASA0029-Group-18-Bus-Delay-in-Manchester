@@ -69,7 +69,7 @@
 }
 
 .about-folder p {
-  max-width: 860px;
+  max-width: 100%;
   margin: 0;
   font-size: 0.96rem;
   line-height: 1.58;
@@ -77,7 +77,7 @@
 }
 
 .about-content {
-  max-width: 900px;
+  max-width: 100%;
 }
 
 /* links / tags */
