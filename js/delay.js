@@ -587,6 +587,7 @@ function bootDelayDashboard(root, payload) {
             <select class="dly-sort-sel" id="dly-sortSel">
               <option value="delay">by delay</option>
               <option value="otp">by on-time %</option>
+              <option value="name">by route number</option>
             </select>
           </div>
           <div class="dly-league" id="dly-league"></div>
@@ -726,10 +727,22 @@ function bootDelayDashboard(root, payload) {
       m:   getRouteMean(key, curPeriod),
       otp: getRouteOTP(key, curPeriod),
     }));
-    // Records with no data in this period sink to the bottom of either sort.
+    // Records with no data in this period sink to the bottom of delay/otp
+    // sorts; the alphabetical/numeric sort always orders strictly by name.
     const cmpDelay = (a, b) => (b.m   ?? -Infinity) - (a.m   ?? -Infinity);
     const cmpOtp   = (a, b) => (a.otp ??  Infinity) - (b.otp ??  Infinity);
-    rows.sort(sort === "delay" ? cmpDelay : cmpOtp);
+    const cmpName  = (a, b) => {
+      const byName = String(a.name).localeCompare(String(b.name),
+        undefined, { numeric: true, sensitivity: "base" });
+      if (byName !== 0) return byName;
+      // Tie-break on direction so 192-0 comes before 192-1.
+      return String(a.dirId ?? "").localeCompare(String(b.dirId ?? ""),
+        undefined, { numeric: true });
+    };
+    const cmp = sort === "delay" ? cmpDelay
+              : sort === "otp"   ? cmpOtp
+              :                    cmpName;
+    rows.sort(cmp);
     const mx = Math.max(0.5, ...rows.map(r => r.m ?? 0));
     $("dly-league").innerHTML = rows.map((r, rank) => {
       const dc = delayColor(r.m);

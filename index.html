@@ -583,63 +583,76 @@
           <p class="chart-kicker" style="margin-top:1em">A few routes worth a look</p>
           <p class="chart-note">
             Several lines stand out across the 265 (route, direction) pairs
-            covered here. Routes 33, 389 and 396 sit near the bottom of the
-            ranking with median delays of around five to six minutes, which
-            means roughly half of every arrival on those lines is at least
-            five minutes late. Route 632 sits at the other end and actually
-            runs a touch ahead of schedule on average. The two directions of
-            the same line can also behave very differently. Route 192 carries
-            a 1.6 minute median in one direction but only 0.8 minutes in the
-            other, which is why the dashboard now treats each direction as
-            its own record. Try clicking those names in the ranking sidebar,
-            or searching for them in the box above, to inspect them stop by
-            stop.
+            covered here. Click any of the route numbers below in the
+            ranking sidebar, or search for them in the box above, to inspect
+            them stop by stop.
           </p>
+          <ul class="chart-note">
+            <li>
+              <strong>Routes 33, 389 and 396</strong> sit near the bottom of
+              the ranking, with median delays of around five to six minutes.
+              That means roughly half of every arrival on these lines is at
+              least five minutes late.
+            </li>
+            <li>
+              <strong>Route 632</strong> sits at the opposite end and
+              actually runs a touch ahead of schedule on average, the only
+              line in the dataset that consistently arrives early.
+            </li>
+            <li>
+              <strong>Route 7</strong> illustrates how much direction
+              matters. It carries a 4.0 minute median in one direction but
+              only 1.7 minutes in the other, which is why the dashboard now
+              treats each direction as its own record.
+            </li>
+          </ul>
         </div>
 
         <div class="content-card section-block">
           <h4>Key Takeaway</h4>
           <p>
-            Read at the city scale through the heatmap overlay, the dashboard
-            tells a clear geographic story. Median delay is comparatively
-            contained across central Manchester and Salford, where the typical
-            heatmap cell sits between one and two minutes. The combination of
-            dense service, competing routes and short feeder distances means
-            that buses recover quickly from a single disruption and arrivals
-            stay close to schedule. The picture changes as the heatmap moves
-            outwards. In the outer Local Authority Districts of Oldham,
-            Rochdale, Bury and Wigan the same statistic rises consistently into
-            the four to six minute range, because long peripheral corridors
-            leave very little slack for buses to make up time after they fall
-            behind, and there are fewer parallel services to absorb a single
-            late vehicle.
+            A clear <strong>core-periphery gradient</strong> structures the
+            network&rsquo;s reliability. Median delay remains <strong>between
+            one and two minutes</strong> across central Manchester and Salford,
+            where dense overlapping services and short feeder distances allow
+            rapid recovery from disruption. By contrast, it rises consistently
+            into the <strong>four-to-six minute range</strong> across the outer
+            districts of <strong>Oldham, Rochdale, Bury and Wigan</strong>,
+            where long peripheral corridors and limited parallel provision
+            afford little slack for late vehicles to regain time.
           </p>
           <p>
-            The temporal slicing reinforces the geography. Most routes run
-            closest to schedule in the AM peak, when timetables are deliberately
-            padded for traffic, and drift later through the day, with PM peak
-            and PM off-peak the most fragile windows. A small subset of
-            school-only and demand-responsive lines do not operate in AM
-            off-peak at all, and the dashboard now surfaces these as
-            &ldquo;no service&rdquo; rather than misreading them as 0% on-time,
-            which is an important distinction between a route that fails its
-            timetable and one that simply is not there. Across the network as a
-            whole, only 78 of the 265 records manage on-time arrivals more than
-            30% of the time at the strict &plusmn;1 minute tolerance the source
-            feed uses, which suggests low-grade lateness is the
-            network&rsquo;s default state rather than its exception.
+            The temporal slicing reinforces this geography. Services perform
+            best during the <strong>AM off-peak</strong>, with a network-wide
+            median delay of only <strong>1.1 minutes</strong>, reflecting low
+            congestion across most of Greater Manchester. The few exceptions
+            &mdash; Blackley in Manchester, Hazel Grove in Stockport, and
+            Partington in Salford &mdash; are isolated rather than systemic.
           </p>
           <p>
-            Read together, these patterns carry the project&rsquo;s argument
-            forward. The same outer neighbourhoods that the
-            <a href="#accessibility">accessibility</a> layer already showed to
-            be structurally underserved are also the ones where buses arrive
-            least predictably. That sets up the
-            <a href="#impact">Impact</a> section&rsquo;s mapping of
-            unreliability onto deprivation, where the everyday-mobility
-            backbone introduced in the
-            <a href="#overview">overview</a> is shown to be most stretched
-            exactly where it is needed most.
+            Performance deteriorates noticeably in the <strong>AM peak</strong>,
+            concentrated along the <strong>peripheral corridors feeding the
+            urban core</strong>, including Farnworth, Rochdale, Shaw, Oldham,
+            Ashton-under-Lyne, Marple, Cheadle Hulme, Partington and Irlam,
+            with a further pocket of delay on the north-western edge of Wigan.
+            This pattern is consistent with <strong>directional inbound
+            congestion as commuter flows converge on the city centre</strong>.
+            Conditions degrade further through the midday and PM peak, when
+            elevated delays extend across the wider region and are most
+            pronounced on the outskirts, before partially recovering in the
+            late afternoon.
+          </p>
+          <p>
+            Across the network, only <strong>78 of 265 (route, direction)
+            pairs</strong> achieve on-time arrival more than 30% of the time
+            at the source feed&rsquo;s strict &plusmn;1 minute tolerance,
+            indicating that <strong>low-grade lateness is the network&rsquo;s
+            default condition</strong> rather than its exception. The
+            peripheral districts least well served by the existing
+            <a href="#accessibility">accessibility</a> geography are also those
+            where arrivals are least predictable, a coincidence that motivates
+            the subsequent <a href="#impact">analysis of how unreliability may
+            be distributed in relation to socioeconomic vulnerability</a>.
           </p>
         </div>
       </div>
@@ -710,7 +723,19 @@
         <div class="content-card section-block">
           <h4>Final Thoughts</h4>
           <p>
-            Ming: add 2–3 sentences reflecting on the overall findings and implications of the project.
+            <strong>A contracting network with uneven losses.</strong> Across the three layers of analysis, a consistent picture emerges. Bus accessibility in Greater Manchester has contracted by roughly 20% between 2016 and 2026, with the steepest losses concentrated in peripheral boroughs such as Wigan, Rochdale, and Oldham, precisely the places where rail and Metrolink alternatives are weakest.
+          </p>
+          <p>
+            <strong>A more nuanced delay and deprivation pattern.</strong> Delay exposure layered onto this shows a more nuanced pattern than a simple deprivation gradient. Most of Greater Manchester's deprived neighbourhoods sit in central Manchester, where service is frequent and delays are low, and at the regional scale the correlation between delay and deprivation is effectively zero.
+          </p>
+          <p>
+            <strong>Where the burden actually lands.</strong> Yet two distinct clusters, five to six LSOAs each in Rochdale and Bolton, combine both high delay and high deprivation, the kind of localised overlap that a city-wide average would obscure entirely. The headline is therefore not that unreliability uniformly punishes the most deprived, but that its burden is geographically concentrated in specific peripheral places, where contracting bus provision and weak alternative modes meet socioeconomic vulnerability. The Bee Network reforms create an opportunity to address these clusters directly, if reliability gains can be targeted rather than averaged across the network.
+          </p>
+          <p>
+            <strong>Why interactive visualisation matters here.</strong> This kind of finding is precisely why interactive visualisation matters. A 129,000-cell accessibility grid, 265 route-direction pairs, and stop-level delay distributions across five time bands together represent the kind of multi-scalar, multi-dimensional dataset that resists a single chart or headline figure, and, as the deprivation analysis shows, a system-wide statistic can flatten exactly the spatial detail that carries the policy signal.
+          </p>
+          <p>
+            <strong>From dataset to public exploration.</strong> By letting users toggle between years, switch between bus, rail, and Metrolink components, filter by time of day, and drill from the network down to individual LSOAs and stops, the dashboard turns a dense analytical pipeline into something a general audience can explore on their own terms. The aim is not to deliver a fixed conclusion but to make the underlying complexity legible, so residents, planners, and policymakers can interrogate the network at the spatial and temporal scale that matters to them, and locate the specific neighbourhoods where targeted intervention would do the most good.
           </p>
         </div>
       </div>
