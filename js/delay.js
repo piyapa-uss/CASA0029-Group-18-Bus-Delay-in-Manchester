@@ -7,6 +7,7 @@
 const DELAY_PATHS = {
   network: "data/delay/network_routes.json",
   details: "data/delay/route_details.json",
+  lad:     "data/delay/gm_lad.geojson",
 };
 
 const DELAY_PERIODS = [
@@ -347,19 +348,41 @@ function injectDelayStyles() {
       font-family:inherit;
     }
     .dly-srch-input:focus { outline:none; border-color:var(--dly-border-strong); }
+    .dly-srch-wrap.is-open { z-index:9999; }
     .dly-srch-drop {
       display:none; position:absolute;
-      top:calc(100% + 3px); left:0; right:0; z-index:50;
-      background:var(--dly-bg-primary);
+      top:calc(100% + 3px); left:0; right:0; z-index:9999;
+      background:#ffffff;
       border:0.5px solid var(--dly-border-mid);
       border-radius:var(--dly-radius-md);
-      max-height:200px; overflow-y:auto;
+      max-height:280px; overflow-y:auto;
+      box-shadow:0 8px 24px rgba(0,0,0,0.12);
     }
     .dly-srow {
       padding:6px 12px; cursor:pointer;
       font-size:13px; color:var(--dly-text-primary);
+      background:#ffffff;
     }
     .dly-srow:hover, .dly-srow.hl { background:var(--dly-bg-secondary); }
+
+    .dly-dir-toggle {
+      display:inline-flex; gap:4px; align-items:center;
+      margin-left:6px;
+    }
+    .dly-dir-pill {
+      padding:3px 10px; border-radius:14px;
+      border:0.5px solid var(--dly-border-mid);
+      background:transparent; cursor:pointer;
+      font-size:11px; font-weight:500;
+      color:var(--dly-text-secondary);
+      font-family:inherit; transition:all .12s;
+    }
+    .dly-dir-pill.on {
+      background:var(--dly-bg-secondary);
+      color:var(--dly-text-primary);
+      border-color:var(--dly-border-strong);
+    }
+    .dly-dir-pill:not(.on):hover { color:var(--dly-text-primary); }
 
     .dly-rbar {
       display:flex; align-items:center;
@@ -486,8 +509,18 @@ function bootDelayDashboard(root, payload) {
     return;
   }
 
+  // v4 emits one record per (route_short_name, direction_id) and ships a
+  // composite `key`. Older v2/v3 payloads are keyed by short_name only.
   const ROUTES = {};
-  ROUTES_LIST.forEach(r => { ROUTES[r.name] = r; });
+  ROUTES_LIST.forEach(r => { ROUTES[r.key || r.name] = r; });
+
+  // Display helpers ------------------------------------------------
+  function routeLabel(r) {
+    if (!r) return "—";
+    return r.direction_id != null ? `Route ${r.name} · dir ${r.direction_id}` : `Route ${r.name}`;
+  }
+  function fmtMin(v)  { return v == null ? "—" : v.toFixed(1) + " min"; }
+  function fmtPct(v)  { return v == null ? "—" : v.toFixed(0) + "%"; }
 
   root.innerHTML = `
     <div class="dly-tab-bar">
@@ -508,15 +541,21 @@ function bootDelayDashboard(root, payload) {
       </div>
 
       <div class="dly-kpi-grid">
-        <div class="dly-mc"><div class="dly-mc-lbl">network mean delay</div><div class="dly-mc-val" id="dly-kpi1">—</div></div>
+        <div class="dly-mc"><div class="dly-mc-lbl">network median delay</div><div class="dly-mc-val" id="dly-kpi1">—</div></div>
         <div class="dly-mc"><div class="dly-mc-lbl">routes on-time &gt; 30%</div><div class="dly-mc-val" id="dly-kpi2">—</div></div>
         <div class="dly-mc"><div class="dly-mc-lbl">worst route</div><div class="dly-mc-val sm" id="dly-kpi3">—</div></div>
         <div class="dly-mc"><div class="dly-mc-lbl">best route</div><div class="dly-mc-val sm" id="dly-kpi4">—</div></div>
       </div>
 
+      <div class="dly-srch-wrap" style="margin-bottom:14px">
+        <input class="dly-srch-input" id="dly-netSrch" type="text"
+               placeholder="Search any stop across the network…" autocomplete="off">
+        <div class="dly-srch-drop" id="dly-netSdrop"></div>
+      </div>
+
       <div class="dly-net-layout">
         <div>
-          <div class="dly-map-note">routes coloured by mean delay · click route or LSOA to drill in</div>
+          <div class="dly-map-note">routes coloured by median delay · click route or LSOA to drill in</div>
           <div class="dly-mapN" id="dly-mapN"></div>
 
           <div class="dly-map-toolbar">
@@ -525,11 +564,11 @@ function bootDelayDashboard(root, payload) {
               <span class="dly-leg-item"><span class="dly-leg-line" style="background:#EF9F27"></span>2 – 5 min</span>
               <span class="dly-leg-item"><span class="dly-leg-line" style="background:#E24B4A"></span>&gt; 5 min</span>
             </div>
-            <button class="dly-lsoa-btn" id="dly-lsoaToggle">+ LSOA overlay</button>
+            <button class="dly-lsoa-btn" id="dly-lsoaToggle">+ heatmap overlay</button>
           </div>
 
           <div class="dly-lsoa-legend" id="dly-lsoaLegend">
-            <span class="dly-lsoa-leg-lbl">LSOA mean delay:</span>
+            <span class="dly-lsoa-leg-lbl">heatmap median delay:</span>
             <span class="dly-lsoa-leg-lbl">0 min</span>
             <div class="dly-lsoa-grad"></div>
             <span class="dly-lsoa-leg-lbl">7+ min</span>
@@ -537,7 +576,7 @@ function bootDelayDashboard(root, payload) {
           </div>
 
           <div class="dly-lsoa-info" id="dly-lsoaInfo">
-            <div class="dly-lsoa-info-head" id="dly-lsoaInfoHead">click an LSOA cell for details</div>
+            <div class="dly-lsoa-info-head" id="dly-lsoaInfoHead">click a heatmap cell for details</div>
             <div class="dly-lsoa-info-grid" id="dly-lsoaInfoGrid"></div>
           </div>
         </div>
@@ -560,6 +599,7 @@ function bootDelayDashboard(root, payload) {
 
       <div class="dly-route-hdr">
         <span class="dly-route-title" id="dly-rTitle">—</span>
+        <span class="dly-dir-toggle" id="dly-dirToggle"></span>
         <span class="dly-route-op"    id="dly-rOp">—</span>
       </div>
 
@@ -578,7 +618,7 @@ function bootDelayDashboard(root, payload) {
       </div>
 
       <div class="dly-kpi-grid">
-        <div class="dly-mc"><div class="dly-mc-lbl">mean delay (median)</div><div class="dly-mc-val" id="dly-m1">—</div></div>
+        <div class="dly-mc"><div class="dly-mc-lbl">median delay</div><div class="dly-mc-val" id="dly-m1">—</div></div>
         <div class="dly-mc"><div class="dly-mc-lbl">on-time ≤ 2 min</div><div class="dly-mc-val" id="dly-m2">—</div></div>
         <div class="dly-mc"><div class="dly-mc-lbl">worst period</div><div class="dly-mc-val sm" id="dly-m3">—</div></div>
         <div class="dly-mc"><div class="dly-mc-lbl">best period</div><div class="dly-mc-val sm" id="dly-m4">—</div></div>
@@ -616,11 +656,13 @@ function bootDelayDashboard(root, payload) {
 
   function periodKey(pi) { return pi < 0 ? "all" : DELAY_PERIOD_KEYS[pi]; }
 
-  function getRouteMean(name, pi) {
-    return ROUTES[name]?.periods?.[periodKey(pi)]?.mean ?? null;
+  function getRouteMean(key, pi) {
+    // The JSON stores the route-level value as `median` (v4); v2/v3 used `mean`.
+    const p = ROUTES[key]?.periods?.[periodKey(pi)];
+    return p ? (p.median ?? p.mean ?? null) : null;
   }
-  function getRouteOTP(name, pi) {
-    return ROUTES[name]?.periods?.[periodKey(pi)]?.otp ?? null;
+  function getRouteOTP(key, pi) {
+    return ROUTES[key]?.periods?.[periodKey(pi)]?.otp ?? null;
   }
 
   function setPeriod(pi) {
@@ -644,61 +686,75 @@ function bootDelayDashboard(root, payload) {
   }
 
   function updateNetworkKPIs() {
-    const names = Object.keys(ROUTES);
-    const means = names.map(n => getRouteMean(n, curPeriod)).filter(v => v != null);
-    if (!means.length) return;
+    const keys = Object.keys(ROUTES);
+    // Routes with data in the current period.
+    const active = keys.filter(k => getRouteMean(k, curPeriod) != null);
+    if (!active.length) {
+      ["dly-kpi1","dly-kpi2","dly-kpi3","dly-kpi4"].forEach(id => $(id).textContent = "—");
+      return;
+    }
+    const means = active.map(k => getRouteMean(k, curPeriod));
     const avg = means.reduce((a, b) => a + b, 0) / means.length;
-    const otps = names.map(n => getRouteOTP(n, curPeriod) ?? 0);
+    const otps = active.map(k => getRouteOTP(k, curPeriod)).filter(v => v != null);
     const goodCount = otps.filter(v => v >= 30).length;
 
-    let wi = 0, bi = 0;
-    names.forEach((n, i) => {
-      const m = getRouteMean(n, curPeriod);
-      if (m == null) return;
-      if (m > (getRouteMean(names[wi], curPeriod) ?? -Infinity)) wi = i;
-      if (m < (getRouteMean(names[bi], curPeriod) ??  Infinity)) bi = i;
+    let wk = active[0], bk = active[0];
+    active.forEach(k => {
+      const m = getRouteMean(k, curPeriod);
+      if (m > getRouteMean(wk, curPeriod)) wk = k;
+      if (m < getRouteMean(bk, curPeriod)) bk = k;
     });
     $("dly-kpi1").textContent = avg.toFixed(1) + " min";
-    $("dly-kpi2").textContent = `${goodCount} / ${names.length}`;
-    $("dly-kpi3").textContent = `Route ${names[wi]} · ${getRouteMean(names[wi], curPeriod).toFixed(1)} min`;
-    $("dly-kpi4").textContent = `Route ${names[bi]} · ${getRouteMean(names[bi], curPeriod).toFixed(1)} min`;
+    $("dly-kpi2").textContent = `${goodCount} / ${active.length}`;
+    $("dly-kpi3").textContent = `${routeLabel(ROUTES[wk])} · ${getRouteMean(wk, curPeriod).toFixed(1)} min`;
+    $("dly-kpi4").textContent = `${routeLabel(ROUTES[bk])} · ${getRouteMean(bk, curPeriod).toFixed(1)} min`;
 
     const k1 = document.getElementById("delay-kpi-1");
     const k2 = document.getElementById("delay-kpi-2");
     const k3 = document.getElementById("delay-kpi-3");
     if (k1) k1.textContent = avg.toFixed(1) + " min";
-    if (k2) k2.textContent = "Route " + names[wi];
-    if (k3) k3.textContent = "Route " + names[bi];
+    if (k2) k2.textContent = routeLabel(ROUTES[wk]);
+    if (k3) k3.textContent = routeLabel(ROUTES[bk]);
   }
 
   function renderLeague() {
     const sort = $("dly-sortSel").value;
-    const rows = Object.keys(ROUTES).map(name => ({
-      name,
-      m:   getRouteMean(name, curPeriod) ?? 0,
-      otp: getRouteOTP(name, curPeriod) ?? 0,
+    const rows = Object.keys(ROUTES).map(key => ({
+      key,
+      name: ROUTES[key].name,
+      dirId: ROUTES[key].direction_id,
+      m:   getRouteMean(key, curPeriod),
+      otp: getRouteOTP(key, curPeriod),
     }));
-    if (sort === "delay") rows.sort((a, b) => b.m - a.m);
-    else                  rows.sort((a, b) => a.otp - b.otp);
-    const mx = Math.max(0.5, ...rows.map(r => r.m));
+    // Records with no data in this period sink to the bottom of either sort.
+    const cmpDelay = (a, b) => (b.m   ?? -Infinity) - (a.m   ?? -Infinity);
+    const cmpOtp   = (a, b) => (a.otp ??  Infinity) - (b.otp ??  Infinity);
+    rows.sort(sort === "delay" ? cmpDelay : cmpOtp);
+    const mx = Math.max(0.5, ...rows.map(r => r.m ?? 0));
     $("dly-league").innerHTML = rows.map((r, rank) => {
       const dc = delayColor(r.m);
-      const bw = Math.round(r.m / mx * 100);
+      const bw = r.m == null ? 0 : Math.round(r.m / mx * 100);
       const rc = routeColor(r.name);
-      return `<div class="dly-lrow" data-route="${r.name}">
+      const dirBadge = r.dirId != null
+        ? `<span style="font-size:10px;color:var(--dly-text-tertiary);font-weight:500">dir ${r.dirId}</span>`
+        : "";
+      const otpStr = r.otp == null ? "no service" : `${r.otp.toFixed(0)}% on-time`;
+      const valStr = r.m == null ? "—" : r.m.toFixed(1);
+      return `<div class="dly-lrow" data-key="${r.key}">
         <span style="font-size:11px;color:var(--dly-text-tertiary);width:18px;text-align:right;flex-shrink:0">${rank + 1}</span>
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:6px">
             <span style="font-size:12px;font-weight:600;color:${rc}">Route ${r.name}</span>
-            <span style="font-size:11px;color:var(--dly-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.otp.toFixed(0)}% on-time</span>
+            ${dirBadge}
+            <span style="font-size:11px;color:var(--dly-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${otpStr}</span>
           </div>
           <div class="dly-lrow-bar"><div class="dly-lrow-fill" style="width:${bw}%;background:${dc}"></div></div>
         </div>
-        <span style="font-size:12px;font-weight:600;color:${dc};flex-shrink:0;min-width:42px;text-align:right">${r.m.toFixed(1)}</span>
+        <span style="font-size:12px;font-weight:600;color:${dc};flex-shrink:0;min-width:42px;text-align:right">${valStr}</span>
       </div>`;
     }).join("");
     $("dly-league").querySelectorAll(".dly-lrow").forEach(el => {
-      el.addEventListener("click", () => goRoute(el.dataset.route));
+      el.addEventListener("click", () => goRoute(el.dataset.key));
     });
   }
 
@@ -715,53 +771,131 @@ function bootDelayDashboard(root, payload) {
       { maxZoom: 19, opacity: 0.85, pane: "shadowPane" }
     ).addTo(mapN);
 
-    Object.keys(ROUTES).forEach(name => {
-      const r = ROUTES[name];
-      const m = getRouteMean(name, curPeriod);
+    // GM Local Authority Districts — context layer underneath the routes.
+    loadLAD().then(() => {
+      if (!ladFeatures || !ladFeatures.length) return;
+      ladLayer = L.geoJSON({ type: "FeatureCollection", features: ladFeatures }, {
+        style: () => ({
+          color:       "#5f5e5a",
+          weight:      0.8,
+          opacity:     0.55,
+          fillColor:   "#d8d3c5",
+          fillOpacity: 0.18,
+        }),
+        onEachFeature: (f, layer) => {
+          const nm = f.properties && f.properties.LADNM;
+          if (nm) layer.bindTooltip(nm, { className: "dly-tt", sticky: true });
+        },
+      }).addTo(mapN);
+      // Make sure routes (and any heatmap cells) sit above the LAD fill.
+      Object.values(routeLayersN).forEach(({ pl, endM }) => { pl.bringToFront(); endM.bringToFront(); });
+    });
+
+    Object.keys(ROUTES).forEach(key => {
+      const r = ROUTES[key];
+      const m = getRouteMean(key, curPeriod);
       const dc = delayColor(m);
-      const coords = r.stops.map(s => [s.lat, s.lon]);
+      const coords = (r.path && r.path.length >= 2)
+        ? r.path
+        : r.stops.map(s => [s.lat, s.lon]);
       if (coords.length < 2) return;
       const pl = L.polyline(coords, { color: dc, weight: 4, opacity: 0.85 }).addTo(mapN);
+      const endCoord = r.stops.length
+        ? [r.stops[r.stops.length - 1].lat, r.stops[r.stops.length - 1].lon]
+        : coords[coords.length - 1];
+      const dirLine = r.direction
+        ? `<span style="color:var(--dly-text-secondary)">dir ${r.direction_id ?? "—"} · ${r.direction}</span><br>`
+        : "";
       pl.bindTooltip(
-        `<b>Route ${name}</b><br>${r.stops.length} stops<br>mean delay: ${m == null ? "—" : m.toFixed(1) + " min"}`,
+        `<b>${routeLabel(r)}</b><br>${dirLine}${r.stops.length} stops<br>median delay: ${fmtMin(m)}`,
         { className: "dly-tt", sticky: true }
       );
-      pl.on("click", () => goRoute(name));
-      const endM = L.circleMarker(coords[coords.length - 1], {
+      pl.on("click", () => goRoute(key));
+      const endM = L.circleMarker(endCoord, {
         radius: 4, fillColor: dc, color: "#fff", weight: 1.5, fillOpacity: 1,
       }).addTo(mapN);
-      routeLayersN[name] = { pl, endM };
+      routeLayersN[key] = { pl, endM };
     });
   }
 
   function updateNetworkMapColors() {
     if (!mapN) return;
-    Object.keys(ROUTES).forEach(name => {
-      const m = getRouteMean(name, curPeriod);
+    Object.keys(ROUTES).forEach(key => {
+      const m = getRouteMean(key, curPeriod);
       const dc = delayColor(m);
-      const lyr = routeLayersN[name];
+      const lyr = routeLayersN[key];
       if (!lyr) return;
       lyr.pl.setStyle({ color: dc });
       lyr.endM.setStyle({ fillColor: dc });
+      const r2 = ROUTES[key];
+      const dirLine2 = r2.direction
+        ? `<span style="color:var(--dly-text-secondary)">dir ${r2.direction_id ?? "—"} · ${r2.direction}</span><br>`
+        : "";
       lyr.pl.setTooltipContent(
-        `<b>Route ${name}</b><br>${ROUTES[name].stops.length} stops<br>mean delay: ${m == null ? "—" : m.toFixed(1) + " min"}`
+        `<b>${routeLabel(r2)}</b><br>${dirLine2}${r2.stops.length} stops<br>median delay: ${fmtMin(m)}`
       );
     });
   }
 
-  // ---------------- LSOA grid overlay ----------------
+  // ---------------- LAD context layer ----------------
+  // Local Authority Districts (10 GM districts) — light boundary layer used
+  // as geographic context behind the routes, and as the source of the
+  // place name shown on each heatmap cell.
+  let ladFeatures = null;     // raw geojson features (lng,lat coords)
+  let ladLayer    = null;     // leaflet layer
+  let ladLoading  = null;
+
+  function loadLAD() {
+    if (ladFeatures) return Promise.resolve(ladFeatures);
+    if (ladLoading)  return ladLoading;
+    ladLoading = fetch(DELAY_PATHS.lad)
+      .then(r => r.ok ? r.json() : null)
+      .then(gj => { ladFeatures = (gj && gj.features) || []; return ladFeatures; })
+      .catch(() => { ladFeatures = []; return ladFeatures; });
+    return ladLoading;
+  }
+
+  function pointInRing(pt, ring) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const xi = ring[i][0], yi = ring[i][1];
+      const xj = ring[j][0], yj = ring[j][1];
+      const intersect = ((yi > pt[1]) !== (yj > pt[1])) &&
+        (pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+  function ladForPoint(lng, lat) {
+    if (!ladFeatures) return null;
+    const pt = [lng, lat];
+    for (const f of ladFeatures) {
+      const g = f.geometry;
+      if (!g) continue;
+      if (g.type === "Polygon") {
+        if (pointInRing(pt, g.coordinates[0])) return f.properties.LADNM;
+      } else if (g.type === "MultiPolygon") {
+        for (const poly of g.coordinates) {
+          if (pointInRing(pt, poly[0])) return f.properties.LADNM;
+        }
+      }
+    }
+    return null;
+  }
+
+  // ---------------- heatmap grid overlay ----------------
   const LSOA_LAT_MIN = 53.34, LSOA_LAT_MAX = 53.64, LSOA_DLAT = 0.022;
   const LSOA_LNG_MIN = -2.78, LSOA_LNG_MAX = -1.88, LSOA_DLNG = 0.036;
   const LSOA_RADIUS_KM = 3.2;
 
   function getAllStopsWithDelay() {
     const out = [];
-    Object.keys(ROUTES).forEach(name => {
-      const r = ROUTES[name];
-      const m = getRouteMean(name, curPeriod);
+    Object.keys(ROUTES).forEach(key => {
+      const r = ROUTES[key];
+      const m = getRouteMean(key, curPeriod);
       if (m == null) return;
       r.stops.forEach(s => {
-        out.push({ lat: s.lat, lng: s.lon, delay: m, route: name });
+        out.push({ lat: s.lat, lng: s.lon, delay: m, route: r.name });
       });
     });
     return out;
@@ -770,7 +904,6 @@ function bootDelayDashboard(root, payload) {
   function buildLSOAFeatures() {
     const stops = getAllStopsWithDelay();
     const features = [];
-    let codeN = 10001;
     for (let lat = LSOA_LAT_MIN; lat < LSOA_LAT_MAX; lat += LSOA_DLAT) {
       for (let lng = LSOA_LNG_MIN; lng < LSOA_LNG_MAX; lng += LSOA_DLNG) {
         const cLat = lat + LSOA_DLAT / 2;
@@ -792,12 +925,13 @@ function bootDelayDashboard(root, payload) {
         if (wSum === 0) continue;
         const delay = dSum / wSum;
         const opacity = Math.min(0.68, 0.28 + count * 0.012);
-        const code = "E01" + String(codeN++).padStart(6, "0");
-        const area = getNeighbourhood(cLat, cLng);
+        // Prefer the actual LAD name from gm_lad; fall back to the
+        // hand-curated neighbourhood lookup if the LAD layer hasn't loaded.
+        const area = ladForPoint(cLng, cLat) || getNeighbourhood(cLat, cLng);
         features.push({
           type: "Feature",
           properties: {
-            code, area, delay, count, opacity,
+            area, delay, count, opacity,
             routes: contributing.slice(0, 8).join(", ") + (contributing.length > 8 ? `, +${contributing.length - 8}` : ""),
           },
           geometry: {
@@ -830,8 +964,8 @@ function bootDelayDashboard(root, payload) {
       }),
       onEachFeature: (f, layer) => {
         const p = f.properties;
-        const tip = `<b>${p.code}</b><br>${p.area}<br>`
-                  + `Mean delay: <b>${p.delay.toFixed(1)} min</b><br>`
+        const tip = `<b>${p.area}</b><br>`
+                  + `Median delay: <b>${p.delay.toFixed(1)} min</b><br>`
                   + `Stops within ${LSOA_RADIUS_KM} km: ${p.count}<br>`
                   + `Routes: ${p.routes || "—"}`;
         layer.bindTooltip(tip, { className: "dly-tt", sticky: true });
@@ -849,14 +983,16 @@ function bootDelayDashboard(root, payload) {
     const leg = $("dly-lsoaLegend");
     const inf = $("dly-lsoaInfo");
     if (lsoaVisible) {
-      renderLSOALayer();
-      btn.textContent = "× LSOA overlay";
+      // Wait for LAD features so cells get a real LAD name instead of the
+      // fallback neighbourhood label.
+      loadLAD().then(() => renderLSOALayer());
+      btn.textContent = "× heatmap overlay";
       btn.classList.add("on");
       leg.style.display = "flex";
       inf.style.display = "block";
     } else {
       if (lsoaLayer) { mapN.removeLayer(lsoaLayer); lsoaLayer = null; }
-      btn.textContent = "+ LSOA overlay";
+      btn.textContent = "+ heatmap overlay";
       btn.classList.remove("on");
       leg.style.display = "none";
       inf.style.display = "none";
@@ -864,10 +1000,10 @@ function bootDelayDashboard(root, payload) {
   }
 
   function showLSOAInfo(p) {
-    $("dly-lsoaInfoHead").textContent = `${p.code} · ${p.area}`;
+    $("dly-lsoaInfoHead").textContent = p.area;
     $("dly-lsoaInfoGrid").innerHTML = `
       <div class="dly-lsoa-info-cell">
-        <div class="label">mean delay</div>
+        <div class="label">median delay</div>
         <div class="value" style="color:${lsoaFillColor(p.delay)}">${p.delay.toFixed(1)} min</div>
       </div>
       <div class="dly-lsoa-info-cell">
@@ -910,19 +1046,24 @@ function bootDelayDashboard(root, payload) {
     setTimeout(() => { initNetworkMap(); if (mapN) mapN.invalidateSize(); }, 60);
   }
 
-  function goRoute(name) {
-    if (!ROUTES[name]) return;
-    curRoute = name; curSI = 0;
+  function goRoute(key) {
+    if (!ROUTES[key]) return;
+    curRoute = key; curSI = 0;
     $("dly-layerN").style.display = "none";
     $("dly-layerR").style.display = "";
     $("dly-tN").className = "dly-tab";
     $("dly-tR").className = "dly-tab on";
-    $("dly-breadcrumb").textContent = `Route ${name} · ${ROUTES[name].stops.length} stops`;
-    const r = ROUTES[name];
-    const rc = routeColor(name);
-    $("dly-rTitle").textContent = `Route ${name}`;
+    const r = ROUTES[key];
+    const rc = routeColor(r.name);
+    const dirLabel = r.direction || (r.terminus_from && r.terminus_to
+                       ? `${r.terminus_from} → ${r.terminus_to}` : null);
+    $("dly-breadcrumb").textContent = `${routeLabel(r)} · ${r.stops.length} stops`;
+    $("dly-rTitle").textContent = routeLabel(r);
     $("dly-rTitle").style.color = rc;
-    $("dly-rOp").textContent = `${r.stops.length} stops · weighted-mean delay ${r.periods.all.mean.toFixed(1)} min`;
+    $("dly-rOp").textContent =
+      (dirLabel ? `${dirLabel} · ` : "")
+      + `${r.stops.length} stops · median delay ${fmtMin(r.periods.all.median ?? r.periods.all.mean)}`;
+    renderDirToggle(r);
     $("dly-sinput").value = r.stops[0].name;
     setTimeout(() => { initRouteMap(); }, 60);
     loadDetails()
@@ -936,7 +1077,7 @@ function bootDelayDashboard(root, payload) {
 
   function initRouteMap() {
     const r = ROUTES[curRoute];
-    const rc = routeColor(curRoute);
+    const rc = routeColor(r.name);
     if (!mapR) {
       mapR = L.map($("dly-mapR"), { zoomControl: false, attributionControl: false });
       L.tileLayer(
@@ -947,7 +1088,9 @@ function bootDelayDashboard(root, payload) {
     if (rPolyline) mapR.removeLayer(rPolyline);
     rStopMarkers.forEach(m => mapR.removeLayer(m));
     rStopMarkers = [];
-    const coords = r.stops.map(s => [s.lat, s.lon]);
+    const coords = (r.path && r.path.length >= 2)
+      ? r.path
+      : r.stops.map(s => [s.lat, s.lon]);
     rPolyline = L.polyline(coords, { color: rc, weight: 4, opacity: 0.9 }).addTo(mapR);
     r.stops.forEach((s, i) => {
       const sel = i === curSI;
@@ -970,7 +1113,7 @@ function bootDelayDashboard(root, payload) {
   function refreshMapMarkers() {
     if (!mapR) return;
     const r = ROUTES[curRoute];
-    const rc = routeColor(curRoute);
+    const rc = routeColor(r.name);
     rStopMarkers.forEach((m, i) => {
       const sel = i === curSI;
       m.setRadius(sel ? 7 : 4);
@@ -986,7 +1129,7 @@ function bootDelayDashboard(root, payload) {
 
   function renderRouteBar() {
     const r = ROUTES[curRoute];
-    const rc = routeColor(curRoute);
+    const rc = routeColor(r.name);
     const stops = r.stops;
     let h = "";
     stops.forEach((s, i) => {
@@ -1065,9 +1208,10 @@ function bootDelayDashboard(root, payload) {
       $("dly-csub").textContent = "Loading detail…";
       return;
     }
-    const stop = ROUTES[curRoute].stops[curSI];
+    const r = ROUTES[curRoute];
+    const stop = r.stops[curSI];
     $("dly-cs").textContent = stop.name;
-    $("dly-csub").textContent = `Route ${curRoute} · stop ${curSI + 1} of ${ROUTES[curRoute].stops.length}`;
+    $("dly-csub").textContent = `${routeLabel(r)} · stop ${curSI + 1} of ${r.stops.length}`;
     renderRouteBar();
     renderMetrics();
     renderScatter();
@@ -1076,7 +1220,10 @@ function bootDelayDashboard(root, payload) {
 
   function periodMeans(stopRec, day) {
     if (!stopRec) return DELAY_PERIODS.map(() => null);
-    return DELAY_PERIODS.map(p => stopRec[day]?.[p.key]?.mean ?? null);
+    return DELAY_PERIODS.map(p => {
+      const c = stopRec[day]?.[p.key];
+      return c ? (c.median ?? c.mean ?? null) : null;
+    });
   }
 
   function renderMetrics() {
@@ -1087,8 +1234,25 @@ function bootDelayDashboard(root, payload) {
     }
     const wd = periodMeans(rec, "wd");
     const we = periodMeans(rec, "we");
-    const all = [...wd, ...we].filter(v => v != null);
-    const mean = all.length ? all.reduce((a, b) => a + b, 0) / all.length : null;
+    // Arrivals-weighted median across all (period × day-type) cells.
+    const samples = [];
+    DELAY_PERIODS.forEach((p, i) => {
+      ["wd", "we"].forEach(d => {
+        const c = rec[d]?.[p.key];
+        const v = c ? (c.median ?? c.mean ?? null) : null;
+        if (v != null && c?.n) samples.push({ v, w: c.n });
+      });
+    });
+    let median = null;
+    if (samples.length) {
+      samples.sort((a, b) => a.v - b.v);
+      const total = samples.reduce((s, x) => s + x.w, 0);
+      let cum = 0;
+      for (const s of samples) {
+        cum += s.w;
+        if (cum >= total / 2) { median = s.v; break; }
+      }
+    }
 
     let onTime = 0, total = 0;
     DELAY_PERIODS.forEach(p => {
@@ -1108,7 +1272,7 @@ function bootDelayDashboard(root, payload) {
       if (wi < 0 || v > wd[wi]) wi = i;
       if (bi < 0 || v < wd[bi]) bi = i;
     });
-    $("dly-m1").textContent = mean == null ? "—" : mean.toFixed(1) + " min";
+    $("dly-m1").textContent = median == null ? "—" : median.toFixed(1) + " min";
     $("dly-m2").textContent = otp  == null ? "—" : otp + "%";
     $("dly-m3").textContent = wi < 0 ? "—" : DELAY_PERIODS[wi].lbl;
     $("dly-m4").textContent = bi < 0 ? "—" : DELAY_PERIODS[bi].lbl;
@@ -1226,6 +1390,91 @@ function bootDelayDashboard(root, payload) {
     ).join("");
   }
 
+  // ---------------- direction toggle ----------------
+  function renderDirToggle(r) {
+    const holder = $("dly-dirToggle");
+    if (!holder) return;
+    // Find every (route, direction) record sharing this short_name.
+    const sibs = Object.values(ROUTES)
+      .filter(x => x.name === r.name)
+      .sort((a, b) => String(a.direction_id ?? "")
+                          .localeCompare(String(b.direction_id ?? "")));
+    if (sibs.length < 2) { holder.innerHTML = ""; return; }
+    holder.innerHTML = sibs.map(s => {
+      const k = s.key || s.name;
+      const cur = (curRoute === k);
+      const lbl = s.direction_id != null ? `dir ${s.direction_id}` : "—";
+      return `<button class="dly-dir-pill${cur ? " on" : ""}" data-rk="${k}"
+                title="${(s.direction || "").replace(/"/g,"&quot;")}">${lbl}</button>`;
+    }).join("");
+    holder.querySelectorAll("[data-rk]").forEach(el => {
+      el.addEventListener("click", () => {
+        const k = el.dataset.rk;
+        if (k !== curRoute) goRoute(k);
+      });
+    });
+  }
+
+  // ---------------- network-wide stop search ----------------
+  // Flat index of every stop on every route, lazily built once.
+  let netSearchIndex = null;
+  function buildNetSearchIndex() {
+    if (netSearchIndex) return netSearchIndex;
+    const arr = [];
+    Object.keys(ROUTES).forEach(rk => {
+      const r = ROUTES[rk];
+      r.stops.forEach((s, i) => {
+        arr.push({
+          stopName:   s.name,
+          stopNameLC: s.name.toLowerCase(),
+          stopId:     s.id,
+          routeKey:   rk,
+          routeName:  r.name,
+          dirId:      r.direction_id,
+          stopIdx:    i,
+        });
+      });
+    });
+    netSearchIndex = arr;
+    return arr;
+  }
+
+  function renderNetSearch(q) {
+    const drop = $("dly-netSdrop");
+    const ix = buildNetSearchIndex();
+    const needle = (q || "").trim().toLowerCase();
+    let rows = needle
+      ? ix.filter(r => r.stopNameLC.includes(needle))
+      : [];
+    rows = rows.slice(0, 80);
+    if (!rows.length) {
+      drop.innerHTML = needle
+        ? `<div style="padding:8px 12px;font-size:12px;color:var(--dly-text-secondary)">no stops found</div>`
+        : `<div style="padding:8px 12px;font-size:12px;color:var(--dly-text-secondary)">type to search any stop on any route</div>`;
+    } else {
+      drop.innerHTML = rows.map(r => {
+        const dirBadge = r.dirId != null ? ` · dir ${r.dirId}` : "";
+        return `<div class="dly-srow" data-rk="${r.routeKey}" data-si="${r.stopIdx}">
+          <div style="font-size:13px;color:var(--dly-text-primary)">${r.stopName}</div>
+          <div style="font-size:11px;color:var(--dly-text-secondary)">Route ${r.routeName}${dirBadge}</div>
+        </div>`;
+      }).join("");
+      drop.querySelectorAll("[data-rk]").forEach(el => {
+        el.addEventListener("click", () => {
+          const rk = el.dataset.rk;
+          const si = parseInt(el.dataset.si, 10);
+          drop.style.display = "none";
+          drop.closest(".dly-srch-wrap").classList.remove("is-open");
+          $("dly-netSrch").value = "";
+          goRoute(rk);
+          // Wait for goRoute to load details and render the stop UI before
+          // selecting the requested stop.
+          loadDetails().then(() => pickStop(si));
+        });
+      });
+    }
+  }
+
   // ---------------- wire-up ----------------
   root.querySelectorAll(".dly-ptab").forEach(b =>
     b.addEventListener("click", () => setPeriod(parseInt(b.dataset.pi, 10)))
@@ -1240,10 +1489,25 @@ function bootDelayDashboard(root, payload) {
   $("dly-bWD").addEventListener("click", () => setDay("weekday"));
   $("dly-bWE").addEventListener("click", () => setDay("weekend"));
 
+  function openNetSearch() {
+    renderNetSearch($("dly-netSrch").value);
+    $("dly-netSdrop").style.display = "block";
+    $("dly-netSrch").closest(".dly-srch-wrap").classList.add("is-open");
+  }
+  function closeNetSearch() {
+    $("dly-netSdrop").style.display = "none";
+    $("dly-netSrch").closest(".dly-srch-wrap").classList.remove("is-open");
+  }
+  $("dly-netSrch").addEventListener("input", openNetSearch);
+  $("dly-netSrch").addEventListener("focus", openNetSearch);
+
   document.addEventListener("click", ev => {
     if (!root.contains(ev.target)) return;
     if (!ev.target.closest("#dly-sinput") && !ev.target.closest("#dly-sdrop")) {
       $("dly-sdrop").style.display = "none";
+    }
+    if (!ev.target.closest("#dly-netSrch") && !ev.target.closest("#dly-netSdrop")) {
+      closeNetSearch();
     }
   });
 
