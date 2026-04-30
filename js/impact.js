@@ -3,7 +3,8 @@
 // ================================
 
 // metric configurations: each defines the field, units, color steps and legend rows
-// shared red ramp across metrics so "darker = higher exposure / more deprived" reads consistently
+// each metric uses a distinct hue (red/orange/purple) so toggling between layers is unambiguous;
+// within each ramp, darker = higher exposure / more deprived
 const IMPACT_METRICS = {
   delay: {
     field: "avg_delay.x",
@@ -35,18 +36,18 @@ const IMPACT_METRICS = {
     nodataValue: -1,
     clampMax: 200,
     stops: [
-      [0,  "#F6F7F1"],
-      [10, "#f7d8d4"],
-      [20, "#f29b99"],
-      [30, "#f0625d"],
-      [40, "#eb4e43"]
+      [0,  "#fff5eb"],
+      [10, "#fdd0a2"],
+      [20, "#fd8d3c"],
+      [30, "#e6550d"],
+      [40, "#a63603"]
     ],
     legend: [
-      { color: "#eb4e43", label: "40+ (most deprived)" },
-      { color: "#f0625d", label: "30 – 40" },
-      { color: "#f29b99", label: "20 – 30" },
-      { color: "#f7d8d4", label: "10 – 20" },
-      { color: "#F6F7F1", label: "0 – 10 (least deprived)" },
+      { color: "#a63603", label: "40+ (most deprived)" },
+      { color: "#e6550d", label: "30 – 40" },
+      { color: "#fd8d3c", label: "20 – 30" },
+      { color: "#fdd0a2", label: "10 – 20" },
+      { color: "#fff5eb", label: "0 – 10 (least deprived)" },
       { color: "#E0E0E0", label: "No data" }
     ]
   },
@@ -58,18 +59,18 @@ const IMPACT_METRICS = {
     nodataValue: -1,
     clampMax: 200,
     stops: [
-      [0,  "#eb4e43"],
-      [20, "#f0625d"],
-      [40, "#f29b99"],
-      [60, "#f7d8d4"],
-      [80, "#F6F7F1"]
+      [0,  "#54278f"],
+      [20, "#756bb1"],
+      [40, "#9e9ac8"],
+      [60, "#cbc9e2"],
+      [80, "#f2f0f7"]
     ],
     legend: [
-      { color: "#eb4e43", label: "0 – 20% (most deprived)" },
-      { color: "#f0625d", label: "20 – 40%" },
-      { color: "#f29b99", label: "40 – 60%" },
-      { color: "#f7d8d4", label: "60 – 80%" },
-      { color: "#F6F7F1", label: "80 – 100% (least deprived)" },
+      { color: "#54278f", label: "0 – 20% (most deprived)" },
+      { color: "#756bb1", label: "20 – 40%" },
+      { color: "#9e9ac8", label: "40 – 60%" },
+      { color: "#cbc9e2", label: "60 – 80%" },
+      { color: "#f2f0f7", label: "80 – 100% (least deprived)" },
       { color: "#E0E0E0", label: "No data" }
     ]
   }
@@ -166,6 +167,68 @@ function injectImpactStyles() {
       height: calc(100vh - 280px);
       min-height: 420px;
     }
+
+    #impact .impact-chart-caption {
+      margin: 4px 0 0 0;
+      font-size: 11px;
+      color: var(--grey-mid);
+      text-align: center;
+      min-height: 14px;
+      line-height: 1.35;
+    }
+
+    #impact .impact-chart-caption strong {
+      color: var(--ink);
+    }
+
+    /* Desktop layout: map on the left, charts stacked compactly on the right
+       so both small charts stay visible while the user hovers over the map. */
+    @media (min-width: 900px) {
+      #impact .impact-visual-row {
+        display: flex;
+        gap: 16px;
+        align-items: stretch;
+      }
+
+      #impact .impact-visual-row .impact-map-canvas {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+
+      #impact .impact-chart-panel {
+        flex: 0 0 320px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      #impact .impact-chart-card {
+        flex: 1 1 0;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        padding: 10px 12px;
+      }
+
+      #impact .impact-chart-card h5 {
+        margin: 0 0 2px 0;
+        font-size: 12px;
+        line-height: 1.2;
+      }
+
+      #impact .impact-chart-card canvas {
+        flex: 1 1 auto;
+        min-height: 0;
+        width: 100% !important;
+        height: auto !important;
+      }
+
+      #impact .impact-chart-caption {
+        margin: 4px 0 0 0;
+        font-size: 10px;
+      }
+    }
   `;
 
   const styleEl = document.createElement("style");
@@ -235,7 +298,21 @@ const allLsoaDelays = lsoaGeojson.features //extracts average delay values for a
   .map(feature => Number(feature.properties["avg_delay.x"]))
   .filter(value => !Number.isNaN(value));
 
-const charts = createImpactCharts(allLsoaDelays); //creates charts and passes in all LSOA delay data to system comparison chart, this function is called here to ensure charts are created before map hover events try to update them
+// Pre-compute the GM-wide reference series consumed by both small charts:
+//   - gmBucketPercentages: stop-level bucket distribution across ALL stops in GM
+//   - lsoaDistribution:    histogram of LSOA-level avg delays (system context)
+//   - sortedLsoaDelays:    used to compute percentile rank for the hovered LSOA
+const allStopDelays = stopDelayData
+  .map(row => Number(row.mean_delay))
+  .filter(value => !Number.isNaN(value));
+const gmBucketPercentages = toPercentages(buildDelayBins(allStopDelays).counts);
+const lsoaDistribution = buildLsoaDistribution(allLsoaDelays);
+const sortedLsoaDelays = [...allLsoaDelays].sort((a, b) => a - b);
+
+const histogramCaption = document.getElementById("lsoa-delay-histogram-caption");
+const systemCaption = document.getElementById("system-delay-comparison-caption");
+
+const charts = createImpactCharts(gmBucketPercentages, lsoaDistribution); //creates charts before map hover events try to update them
 
 function addLsoaLayer() {
   impactMap.resize();
@@ -332,6 +409,13 @@ impactMap.on("mousemove", (e) => {
   if (!features.length) { //if not hovering over polygon, there is no info and cursor is reset to default
     impactMap.getCanvas().style.cursor = "";
     hoverInfo.innerHTML = `Hover over an LSOA to see delay and deprivation statistics`;
+    // reset bucket chart back to its empty state and clear chart captions
+    charts.histogramChart.data.datasets[0].data = [0, 0, 0, 0];
+    charts.histogramChart.update();
+    charts.systemChart.data.datasets[0].backgroundColor = lsoaDistribution.counts.map(() => "#cbcbcb");
+    charts.systemChart.update();
+    histogramCaption.textContent = "Hover over an LSOA to see its delay distribution vs Greater Manchester.";
+    systemCaption.textContent = "Hover over an LSOA to see its position in the GM-wide delay distribution.";
     return;
   }
 
@@ -353,20 +437,35 @@ impactMap.on("mousemove", (e) => {
     .map(row => Number(row.mean_delay)) //converts delay values to numbers for use in histogram 
     .filter(value => !Number.isNaN(value)); //filters out NAs to prevent issues with charts
 
+  // bucket chart: convert the selected LSOA's stop counts to percentages so it's
+  // directly comparable to the GM-wide reference series, and surface the raw
+  // stop count in the caption (a percentage chart is misleading without it)
   const bins = buildDelayBins(selectedStopDelays);
+  const lsoaPercentages = toPercentages(bins.counts);
+  charts.histogramChart.data.datasets[0].data = lsoaPercentages;
+  charts.histogramChart.update();
 
-  charts.histogramChart.data.labels = bins.labels;
-  charts.histogramChart.data.datasets[0].data = bins.counts;
-  charts.histogramChart.update(); //updates histogram with new data for selected LSOA
+  const stopCount = selectedStopDelays.length;
+  histogramCaption.innerHTML = stopCount > 0
+    ? `<strong>${stopCount}</strong> stop${stopCount === 1 ? "" : "s"} in this LSOA — red bars vs grey GM-wide average.`
+    : `No stop-level delay data for this LSOA.`;
 
-  const selectedDelay = Number(properties["avg_delay.x"]); //gets average delay for selected LSOA to plot on system comparison chart
+  // system chart: highlight the bin containing this LSOA's avg delay and surface
+  // its percentile rank — this turns "where am I?" into a single-glance answer
+  const selectedDelay = Number(properties["avg_delay.x"]);
+  if (!Number.isNaN(selectedDelay)) {
+    const binIdx = getLsoaBinIndex(selectedDelay);
+    charts.systemChart.data.datasets[0].backgroundColor = lsoaDistribution.counts
+      .map((_, i) => i === binIdx ? "#FD4B49" : "#cbcbcb");
+    charts.systemChart.update();
 
-  charts.systemChart.data.datasets[1].data = [{ //updates system comparison chart to plot selected LSOA against all LSOAs, x position is average delay and y position is arbitrary to spread points out, only one point for selected LSOA which is highlighted in red
-    x: selectedDelay,
-    y: 4
-  }];
-
-  charts.systemChart.update(); //updates system comparison chart with new data for selected LSOA
+    const percentile = calculatePercentileRank(selectedDelay, sortedLsoaDelays);
+    systemCaption.innerHTML = `<strong>${selectedDelay.toFixed(2)} min</strong> — ${percentile}th percentile (higher delay than ${percentile}% of GM LSOAs).`;
+  } else {
+    charts.systemChart.data.datasets[0].backgroundColor = lsoaDistribution.counts.map(() => "#cbcbcb");
+    charts.systemChart.update();
+    systemCaption.textContent = "No average-delay data available for this LSOA.";
+  }
   });
 
 }
@@ -508,11 +607,13 @@ function renderImpactMap(container) {
           <div class="impact-chart-card">
             <h5>Delay Buckets in Selected LSOA</h5>
             <canvas id="lsoa-delay-histogram"></canvas>
+            <p id="lsoa-delay-histogram-caption" class="impact-chart-caption">Hover over an LSOA to see its delay distribution vs Greater Manchester.</p>
           </div>
 
           <div class="impact-chart-card">
-            <h5>Selected LSOA vs System</h5>
+            <h5>Selected LSOA vs Greater Manchester</h5>
             <canvas id="system-delay-comparison"></canvas>
+            <p id="system-delay-comparison-caption" class="impact-chart-caption">Hover over an LSOA to see its position in the GM-wide delay distribution.</p>
           </div>
         </div>
       </div>
@@ -540,7 +641,7 @@ async function loadCSV(path) {
   });
 }
 
-// function to create delay bins for histogram, takes in array of delay values and counts how many fall into each bin, returns object with bin labels and counts for each bin
+// stop-level delay bins used by the bucket chart (selected LSOA + GM reference)
 function buildDelayBins(values) {
   const binLabels = ["0-2min", "2-5min", "5-10min", "10+min"];
   const binCounts = [0, 0, 0, 0];
@@ -563,77 +664,129 @@ function buildDelayBins(values) {
   };
 }
 
- // creates histogram and system comparison charts using chart.js
-function createImpactCharts(allLsoaDelays) {
+// convert a counts array to percentages (0-100, 1dp); empty input returns zeros
+function toPercentages(counts) {
+  const total = counts.reduce((a, b) => a + b, 0);
+  if (total === 0) return counts.map(() => 0);
+  return counts.map(c => Number(((c / total) * 100).toFixed(1)));
+}
+
+// 1-min bins from 0 to 10+, used to summarise the LSOA-level avg-delay distribution
+const LSOA_BIN_LABELS = ["0–1", "1–2", "2–3", "3–4", "4–5", "5–6", "6–7", "7–8", "8–9", "9–10", "10+"];
+function getLsoaBinIndex(value) {
+  if (value >= 10) return LSOA_BIN_LABELS.length - 1;
+  return Math.max(0, Math.floor(value));
+}
+function buildLsoaDistribution(allLsoaDelays) {
+  const counts = new Array(LSOA_BIN_LABELS.length).fill(0);
+  allLsoaDelays.forEach(value => {
+    counts[getLsoaBinIndex(value)]++;
+  });
+  return { labels: LSOA_BIN_LABELS, counts };
+}
+
+// percentile rank (0-100) of a value within a pre-sorted ascending array
+function calculatePercentileRank(value, sortedValues) {
+  if (!sortedValues.length) return 0;
+  const lowerCount = sortedValues.filter(v => v < value).length;
+  return Math.round((lowerCount / sortedValues.length) * 100);
+}
+
+ // creates the bucket comparison chart and the LSOA-distribution chart using chart.js
+function createImpactCharts(gmBucketPercentages, lsoaDistribution) {
   const histogramCanvas = document.getElementById("lsoa-delay-histogram");
   const systemCanvas = document.getElementById("system-delay-comparison");
 
+  // Bucket chart: grouped bars compare selected LSOA's stop-level delay buckets
+  // against the GM-wide average, both shown as % of stops so LSOAs with different
+  // stop counts remain comparable
   const histogramChart = new Chart(histogramCanvas, {
     type: "bar",
     data: {
-      labels: ["0-2min", "2-5min", "5-10min", "10+min"],
-      datasets: [{
-        label: "Number of stops",
-        data: [0, 0, 0, 0],
-        backgroundColor: "#FD4B49"
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: { precision: 0 }
-        }
-      }
-    }
-  });
-
-  const systemChart = new Chart(systemCanvas, {
-    type: "scatter",
-    data: {
+      labels: ["0-2", "2-5", "5-10", "10+"],
       datasets: [
         {
-          label: "All LSOAs",
-          data: allLsoaDelays.map((delay, index) => ({
-            x: delay,
-            y: index % 8
-          })),
-          pointRadius: 2,
-          backgroundColor: "#A5A5A1"
+          label: "This LSOA",
+          data: [0, 0, 0, 0],
+          backgroundColor: "#FD4B49"
         },
         {
-          label: "Selected LSOA",
-          data: [],
-          pointRadius: 7,
-          backgroundColor: "#FD4B49"
+          label: "GM average",
+          data: gmBucketPercentages,
+          backgroundColor: "#cbcbcb"
         }
       ]
     },
     options: {
       responsive: true,
-      plugins: { //custom tooltip to show average delay value when hovering over selected LSOA point, legend is hidden since we have a custom legend in the HTML
+      maintainAspectRatio: false,
+      layout: { padding: 0 },
+      plugins: {
+        legend: {
+          display: true,
+          position: "bottom",
+          labels: { boxWidth: 8, boxHeight: 8, padding: 6, font: { size: 10 } }
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}%`
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { font: { size: 10 } }, grid: { display: false } },
+        y: {
+          beginAtZero: true,
+          ticks: { callback: v => v + "%", font: { size: 10 }, maxTicksLimit: 5 },
+          grid: { color: "rgba(0,0,0,0.05)" }
+        }
+      }
+    }
+  });
+
+  // System chart: histogram of average delay across all LSOAs in GM. The bin
+  // containing the hovered LSOA is highlighted, so the user can see at a glance
+  // where it sits in the system distribution.
+  const baseColors = lsoaDistribution.counts.map(() => "#cbcbcb");
+  const systemChart = new Chart(systemCanvas, {
+    type: "bar",
+    data: {
+      labels: lsoaDistribution.labels,
+      datasets: [{
+        label: "LSOAs",
+        data: lsoaDistribution.counts,
+        backgroundColor: baseColors,
+        borderWidth: 0,
+        categoryPercentage: 0.95,
+        barPercentage: 1.0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: 0 },
+      plugins: {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: function(context) {
-              return `Average delay: ${context.parsed.x.toFixed(2)} mins`;
-            }
+            label: (ctx) => `${ctx.parsed.y} LSOAs (${ctx.label} min)`
           }
         }
       },
       scales: {
         x: {
-          title: {
-            display: true,
-            text: "Average delay (mins)"
-          }
+          ticks: {
+            font: { size: 9 },
+            autoSkip: true,
+            maxRotation: 0
+          },
+          grid: { display: false },
+          title: { display: true, text: "avg delay (min)", font: { size: 10 }, padding: 0 }
         },
         y: {
-          display: false
+          beginAtZero: true,
+          ticks: { precision: 0, font: { size: 10 }, maxTicksLimit: 4 },
+          grid: { color: "rgba(0,0,0,0.05)" }
         }
       }
     }
