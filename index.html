@@ -14,8 +14,6 @@
   <link rel="stylesheet" href="css/about.css" />
 </head>
 
-<script src="js/about.js"></script>
-
 <body>
   <!-- Right circular navigation: hidden on hero, appears after scroll -->
   <div class="orb-nav hidden-on-hero">
@@ -100,68 +98,94 @@
           why bus reliability matters for everyday access, opportunity, and transport inequality.
         </p>
 
-        <div class="overview-hero-grid">
-          <!-- MAP / STAT -->
-          <div class="overview-map-card">
-            <div id="overview-map" class="overview-map"></div>
-
-            <div class="overview-map-stat share-card">
-              <div class="share-label">Bus share of daily trips</div>
-
-              <div class="share-main">
-                <span class="share-number">33%</span>
-                <span class="share-caption">≈ 1 in 3 trips</span>
-              </div>
-
-              <div class="share-bar" aria-label="33 percent bus share">
-                <span style="width: 33%;"></span>
-              </div>
-
-              <div class="share-context">
-                Bus trips form a major part of everyday mobility across Greater Manchester.
+        <div class="overview-hero-grid overview-data-grid">
+          <div class="bus-journey-card">
+            <div class="bus-journey-header">
+              <div>
+                <p class="chart-kicker">Macro context</p>
+                <h4>Bus journeys across major English city-regions</h4>
+                <p class="chart-note">Passenger journeys on local bus services, 2010–2025</p>
               </div>
             </div>
+
+            <div class="bus-legend">
+              <span class="legend-item gm"><i></i>Greater Manchester</span>
+              <span class="legend-item"><i></i>West Midlands</span>
+              <span class="legend-item"><i></i>West Yorkshire</span>
+              <span class="legend-item"><i></i>Merseyside</span>
+              <span class="legend-item"><i></i>South Yorkshire</span>
+            </div>
+
+            <div id="bus-journey-chart"></div>
+
+            <div class="bus-slider-row">
+              <span>Year: <strong id="bus-year-label">2025</strong></span>
+              <input id="bus-year-slider" type="range" min="2010" max="2025" value="2025" step="1" />
+            </div>
+
+            <p class="mini-source">Source: Department for Transport bus statistics, cleaned from Ming’s dataset.</p>
           </div>
 
-          <!-- WHY PANEL -->
-          <div class="overview-explain-panel">
-            <div class="overview-explain-item">
-              <div class="overview-icon">01</div>
-              <div>
-                <h4>Why Manchester?</h4>
-                <p>
-                  Greater Manchester is a large and decentralised city-region where access to jobs,
-                  education, and services varies across neighbourhoods.
-                </p>
+          <aside class="overview-side-context">
+            <div class="gm-stat-card">
+              <div class="gm-stat-main">
+                <div class="gm-stat-icon">▣</div>
+                <div>
+                  <h4>Greater Manchester</h4>
+                  <strong>171M</strong>
+                  <p>bus journeys in 2025</p>
+                </div>
+              </div>
+
+              <div class="gm-stat-list">
+                <div>
+                  <span>01</span>
+                  <p><strong>2nd highest</strong> among selected city-regions</p>
+                </div>
+                <div>
+                  <span>02</span>
+                  <p><strong>-23%</strong> change since 2010</p>
+                </div>
+                <div>
+                  <span>03</span>
+                  <p>Serving <strong>2.8M+</strong> residents across 10 boroughs</p>
+                </div>
               </div>
             </div>
 
-            <div class="overview-explain-item">
-              <div class="overview-icon">02</div>
-              <div>
-                <h4>Why bus matters?</h4>
-                <p>
-                  Buses support everyday mobility and often provide the most flexible public transport
-                  option for people without easy access to a car.
-                </p>
+            <div class="overview-mini-map-card">
+              <svg id="overview-mini-map"></svg>
+
+              <div class="mini-map-legend">
+                <span class="dot active"></span> Selected
+                <span class="dot"></span> Others
               </div>
             </div>
 
-            <div class="overview-explain-item">
-              <div class="overview-icon">03</div>
-              <div>
-                <h4>Inequality and access</h4>
-                <p>
-                  Poor reliability does not affect all places equally. Areas with fewer transport
-                  alternatives may experience delay as a greater mobility burden.
-                </p>
+              <div class="mini-map-legend">
+                <span><i class="gm"></i>Greater Manchester</span>
+                <span><i></i>Other city-regions</span>
               </div>
             </div>
+          </aside>
+        </div>
 
-            <div class="mini-source">
-              Source: Greater Manchester Independent Prosperity Review Evidence Update: Transport;
-              Transport for Greater Manchester GMAL data.
-            </div>
+        <div class="overview-stat-row">
+          <div>
+            <strong>33%</strong>
+            <p>of daily trips are by bus</p>
+          </div>
+          <div>
+            <strong>1 in 3</strong>
+            <p>residents do not have access to a car</p>
+          </div>
+          <div>
+            <strong>100k+</strong>
+            <p>people are outside a 10-minute walk of frequent bus service</p>
+          </div>
+          <div>
+            <strong>Key point</strong>
+            <p>Bus reliability matters most where people depend on it for everyday access.</p>
           </div>
         </div>
 
@@ -379,7 +403,7 @@
         </a>
       </div>
     </div>
-
+     <script src="js/about.js"></script>
   </div>
 </section>
 
@@ -552,24 +576,26 @@
     <!-- =========================
       6. ABOUT / METHODOLOGY / DATA (ALL)
     ========================== -->
-    <section id="about" class="panel">
-      <div class="section-inner">
+    <section id="about" class="about-section">
+      <div class="about-heading">
         <p class="section-label">05</p>
-        <h3>About / Data</h3>
-        <p class="section-note">
-          This final section documents the project datasets, tools, limitations and team members.
-        </p>
+        <h3>About</h3>
+      </div>
 
-        <div class="cards-2">
-          <div class="content-card">
-            <h4>Project Summary</h4>
-            <p>
-              This project analyzes how bus delays are distributed across Greater Manchester and explores how reliability varies across the region and network. When combining delay patterns with the socioeconomic indicator of deprivation score, it helps identify where regions experiencing higher delays may coincide with areas of greater vulnerability. The analysis connects transport accessibility, bus reliability, delay exposure, and uneven mobility and its potential socioeconomc impacts into one analytical workflow.
-            </p>
-          </div>
+      <!-- SECTION A -->
+      <div class="about-stack">
+        <article class="about-folder">
+          <div class="folder-tab">A · Project Summary</div>
+          <h3>Project Summary</h3>
+          <p>
+            This project analyzes how bus delays are distributed across Greater Manchester and explores how reliability varies across the region and network. When combining delay patterns with the socioeconomic indicator of deprivation score, it helps identify where regions experiencing higher delays may coincide with areas of greater vulnerability. The analysis connects transport accessibility, bus reliability, delay exposure, and uneven mobility into one analytical workflow.
+          </p>
+        </article>
 
-          <div class="content-card">
-            <h4>Datasets</h4>
+        <article class="about-folder">
+          <div class="folder-tab">B · Datasets</div>
+          <h3>Datasets</h3>
+          <p class="about-content">
             <p>
               <a href="https://www.data.gov.uk/dataset/d9dfbf0a-3cd7-4b12-a39f-0ec717423ee4/gm-accessibility-levels" target="_blank">Greater Manchester Accessibility Levels (GMAL)</a>,
               <a href="https://assets.publishing.service.gov.uk/media/691ded34513046b952c500bd/File_5_IoD2025_Scores_for_the_Indices_of_Deprivation.xlsx" target="_blank">Indices of Deprivation (IoD) 2025</a>,
@@ -577,40 +603,85 @@
               <a href="https://tfgm.com/data-analytics-and-insight/open-data-portal" target="_blank">Transport for Greater Manchester (TfGM) Open Data Portal</a>,
               <a href="https://assets.ctfassets.net/nv7y93idf4jq/5dMjk40s4A16mva8Hkanjv/7a04763ded3268fc3012d1afe010de8a/TRADS_2024_Main_Report_-_final_version.pdf" target="_blank">Transport for Greater Manchester Travel Recency and Attitudes Survey (TRADS) 2024</a>
             </p>
-          </div>
-        </div>
+          </p>
+        </article>
 
-        <div class="cards-2 section-block">
-          <div class="content-card">
-            <h4>Tools & Libraries</h4>
-            <p>
-              <a href="https://www.mapbox.com/" target="_blank">Mapbox</a>, 
-              <a href="https://carto.com/platform/" target="_blank">CARTO</a>,
-              <a href="https://maplibre.org/" target="_blank">MapLibre</a>,
-              <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank">JavaScript</a>, 
-              <a href="https://www.chartjs.org/" target="_blank">Chart.js</a>, 
-              <a href="https://qgis.org/" target="_blank">QGIS</a>, 
-              <a href="https://www.r-project.org/" target="_blank">R</a>,
-              <a href="https://www.python.org/" target="_blank">Python</a>,
-              <a href="https://pages.github.com/" target="_blank">GitHub Pages</a>
-            </p>
-          </div>
-        </div>
+        <article class="about-folder">
+          <div class="folder-tab">C · Tools & Libraries</div>
+          <h3>Tools & Libraries</h3>
+          <p>
+            <a href="https://www.mapbox.com/" target="_blank">Mapbox</a>, 
+            <a href="https://carto.com/platform/" target="_blank">CARTO</a>,
+            <a href="https://maplibre.org/" target="_blank">MapLibre</a>,
+            <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank">JavaScript</a>, 
+            <a href="https://www.chartjs.org/" target="_blank">Chart.js</a>, 
+            <a href="https://qgis.org/" target="_blank">QGIS</a>, 
+            <a href="https://www.r-project.org/" target="_blank">R</a>,
+            <a href="https://www.python.org/" target="_blank">Python</a>,
+            <a href="https://pages.github.com/" target="_blank">GitHub Pages</a>
+          </p>
+        </article>
 
-        <div class="cards-2 section-block">
-          <div class="content-card">
-            <h4>Limitations</h4>
-            <p>
-              The analysis is based on bus delay data from 2016-2026, which may miss some delay observations and utilizes aggregated averages that may not capture exactly how individuals experience delay. The causes of delays are not directly observable in the data and may be related to outside factors such as congestion and operational disruptions such as maintenance, staffing, and external events which are not explicitly accounted for. The analysis focuses on the spatial patterns of delay and does not directly measure the lived experience of delay or its impacts on individuals, which may vary widely based on personal circumstances, trip purpose, and other factors.
-            </p>
+        <article class="about-folder">
+          <div class="folder-tab">D · Limitations</div>
+          <h3>Limitations</h3>
+          <p>
+            The analysis is based on bus delay data from 2016–2026, which may miss some delay observations and utilizes aggregated averages that may not capture exactly how individuals experience delay. The causes of delays are not directly observable and may relate to external factors such as congestion or operational disruptions.
+          </p>
+        </article>
+      </div>
+
+      <!-- SECTION B -->
+      <div class="team-section">
+        <h3 class="team-title">Meet the team</h3>
+
+        <div class="team-grid">
+
+          <div class="team-card">
+            <div class="card-front">
+              <p>Jacob Echele</p>
+              <span>Email: jacob.echele@example.com</span>
+            </div>
+            <div class="card-back">
+              <img src="images/team/jacob.jpg" alt="">
+            </div>
+          </div>
+
+          <div class="team-card">
+            <div class="card-front">
+              <p>Kongtup Wanichjaroenporn</p>
+              <span>Email: kongtup.wanichjaroenporn.25@ucl.ac.uk</span>
+            </div>
+            <div class="card-back">
+              <img src="images/team/kongtup.jpg" alt="">
+            </div>
+          </div>
+
+          <div class="team-card">
+            <div class="card-front">
+              <p>Piyapa Sotthiwat</p>
+              <span>Email: piyapa.sotthiwat.25@ucl.ac.uk</span>
+            </div>
+            <div class="card-back">
+              <img src="images/team/puk.jpg" alt="">
+            </div>
           </div>
         </div>
       </div>
+
+      <!-- FOOTER -->
+      <div class="about-footer">
+        CASA0029 · GROUP 18 · STUCK IN TRANSIT © 2026
+      </div>
+
     </section>
   </main>
 
   <!-- Global -->
   <script src="js/main.js"></script>
+
+  <!-- Libraries -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
 
   <!-- Section-specific -->
   <script src="js/overview.js"></script>

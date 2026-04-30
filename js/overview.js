@@ -1,209 +1,263 @@
 // ================================
-// OVERVIEW MINI MAP (PUK)
-// Real MapLibre intro map using GMAL bus accessibility data
-// Editorial point-map version, not heatmap
+// OVERVIEW STACKED AREA CHART (PUK)
+// D3 macro context: bus journeys by major English city-region
 // ================================
 
-initOverviewSection();
+document.addEventListener("DOMContentLoaded", () => {
+  initBusJourneyChart();
+});
 
-function initOverviewSection() {
-  const mapEl = document.getElementById("overview-map");
-  if (!mapEl) return;
+async function initBusJourneyChart() {
+  const container = d3.select("#bus-journey-chart");
+  const slider = d3.select("#bus-year-slider");
+  const yearLabel = d3.select("#bus-year-label");
 
-  loadOverviewMapDependencies()
-    .then(() => renderOverviewMiniMap(mapEl))
-    .catch((err) => {
-      console.error("[overview] map failed:", err);
-      mapEl.innerHTML = `
-        <div style="padding:24px;color:white;">
-          Overview map failed to load.
-        </div>
-      `;
-    });
-}
+  if (container.empty()) return;
 
-function loadOverviewMapDependencies() {
-  return Promise.all([
-    loadOverviewStylesheet("https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css"),
-    loadOverviewScript("https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"),
-  ]);
-}
-
-function loadOverviewScript(src) {
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${src}"]`);
-
-    if (existing) {
-      if (window.maplibregl) return resolve();
-      existing.addEventListener("load", resolve);
-      existing.addEventListener("error", reject);
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = src;
-    script.async = true;
-    script.onload = resolve;
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
-}
-
-function loadOverviewStylesheet(href) {
-  return new Promise((resolve, reject) => {
-    if (document.querySelector(`link[href="${href}"]`)) return resolve();
-
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = href;
-    link.onload = resolve;
-    link.onerror = reject;
-    document.head.appendChild(link);
-  });
-}
-
-async function renderOverviewMiniMap(container) {
-  const response = await fetch("data/accessibility/gmal_2016.json");
-
-  if (!response.ok) {
-    throw new Error("Could not load data/accessibility/gmal_2016.json");
-  }
-
-  const gmal = await response.json();
-
-  const points = gmal.data.map((d) => ({
-    type: "Feature",
-    geometry: {
-      type: "Point",
-      coordinates: [d[0], d[1]],
-    },
-    properties: {
-      overall: d[2],
-      level: d[3],
-      bus: d[4],
-      rail: d[5],
-      metro: d[6],
-      locallink: d[7],
-    },
+  const data = await d3.csv("data/overview/bus_journeys_cityregions.csv", d => ({
+    year: +d.year,
+    area: d.area,
+    journeys: +d.journeys
   }));
 
-  const geojson = {
-    type: "FeatureCollection",
-    features: points,
+  const areas = [
+    "Merseyside",
+    "South Yorkshire",
+    "West Yorkshire",
+    "West Midlands",
+    "Greater Manchester"
+  ];
+
+  const areaColors = {
+    "Greater Manchester": "#ff4b25",
+    "West Midlands": "#b8b8b8",
+    "West Yorkshire": "#c9c9c9",
+    "Merseyside": "#dddddd",
+    "South Yorkshire": "#eeeeee"
   };
 
-  const map = new maplibregl.Map({
-    container,
-    style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-    center: [-2.245, 53.475],
-    zoom: 9.45,
-    pitch: 0,
-    bearing: 0,
-    attributionControl: false,
+  const margin = { top: 28, right: 28, bottom: 42, left: 54 };
+  const width = 720;
+  const height = 380;
+
+  container.selectAll("*").remove();
+
+  const svg = container
+    .append("svg")
+    .attr("viewBox", `0 0 ${width} ${height}`)
+    .attr("role", "img")
+    .attr("aria-label", "Stacked area chart showing bus journeys by city-region from 2010 to 2025");
+
+  const chartWidth = width - margin.left - margin.right;
+  const chartHeight = height - margin.top - margin.bottom;
+
+  const g = svg
+    .append("g")
+    .attr("transform", `translate(${margin.left},${margin.top})`);
+
+  const wideData = Array.from(
+    d3.group(data, d => d.year),
+    ([year, rows]) => {
+      const obj = { year };
+      rows.forEach(r => {
+        obj[r.area] = r.journeys;
+      });
+      return obj;
+    }
+  ).sort((a, b) => a.year - b.year);
+
+  const x = d3.scaleLinear()
+    .domain(d3.extent(wideData, d => d.year))
+    .range([0, chartWidth]);
+
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(wideData, d =>
+      d3.sum(areas, area => d[area] || 0)
+    )])
+    .nice()
+    .range([chartHeight, 0]);
+
+  const stack = d3.stack()
+    .keys(areas)
+    .order(d3.stackOrderNone)
+    .offset(d3.stackOffsetNone);
+
+  const stacked = stack(wideData);
+
+  const area = d3.area()
+    .x(d => x(d.data.year))
+    .y0(d => y(d[0]))
+    .y1(d => y(d[1]))
+    .curve(d3.curveMonotoneX);
+
+  // Grid
+  g.append("g")
+    .attr("class", "bus-grid")
+    .call(
+      d3.axisLeft(y)
+        .ticks(5)
+        .tickSize(-chartWidth)
+        .tickFormat("")
+    );
+
+  // Areas
+  const paths = g.selectAll(".bus-area")
+    .data(stacked)
+    .join("path")
+    .attr("class", d => `bus-area ${d.key === "Greater Manchester" ? "is-manchester" : ""}`)
+    .attr("fill", d => areaColors[d.key])
+    .attr("opacity", d => d.key === "Greater Manchester" ? 0.96 : 0.72)
+    .attr("stroke", d => d.key === "Greater Manchester" ? "#d83f1f" : "rgba(0,0,0,0.08)")
+    .attr("stroke-width", d => d.key === "Greater Manchester" ? 2.2 : 0.7)
+    .attr("d", area);
+
+  // Reveal animation
+  const clip = g.append("clipPath")
+    .attr("id", "bus-chart-reveal")
+    .append("rect")
+    .attr("width", 0)
+    .attr("height", chartHeight);
+
+  paths.attr("clip-path", "url(#bus-chart-reveal)");
+
+  clip.transition()
+    .duration(1400)
+    .ease(d3.easeCubicOut)
+    .attr("width", chartWidth);
+
+  // Axes
+  g.append("g")
+    .attr("class", "bus-axis bus-axis-x")
+    .attr("transform", `translate(0,${chartHeight})`)
+    .call(
+      d3.axisBottom(x)
+        .tickValues([2010, 2015, 2020, 2025])
+        .tickFormat(d3.format("d"))
+    );
+
+  g.append("g")
+    .attr("class", "bus-axis bus-axis-y")
+    .call(
+      d3.axisLeft(y)
+        .ticks(5)
+        .tickFormat(d => `${d}M`)
+    );
+
+  // Vertical year marker
+  const marker = g.append("line")
+    .attr("class", "bus-year-marker")
+    .attr("y1", 0)
+    .attr("y2", chartHeight)
+    .attr("x1", x(2025))
+    .attr("x2", x(2025));
+
+  const tooltip = container
+    .append("div")
+    .attr("class", "bus-tooltip");
+
+  function updateYear(selectedYear) {
+    yearLabel.text(selectedYear);
+
+    const revealWidth = x(selectedYear);
+
+    clip
+        .transition()
+        .duration(220)
+        .ease(d3.easeCubicOut)
+        .attr("width", revealWidth);
+    
+    marker
+      .transition()
+      .duration(220)
+      .attr("x1", x(selectedYear))
+      .attr("x2", x(selectedYear));
+
+    const gm = data.find(d =>
+      d.year === selectedYear && d.area === "Greater Manchester"
+    );
+
+    const ranked = data
+      .filter(d => d.year === selectedYear)
+      .sort((a, b) => b.journeys - a.journeys);
+
+    const rank = ranked.findIndex(d => d.area === "Greater Manchester") + 1;
+
+    tooltip.html(`
+      <strong>${selectedYear}</strong>
+      <span>Greater Manchester</span>
+      <b>${gm ? gm.journeys.toFixed(1) : "--"}M journeys</b>
+      <em>Rank ${rank} of ${ranked.length} selected city-regions</em>
+    `);
+  }
+
+  slider.on("input", function () {
+    updateYear(+this.value);
   });
 
-  map.scrollZoom.disable();
-  map.dragRotate.disable();
-  map.touchZoomRotate.disableRotation();
+  updateYear(+slider.property("value"));
+}
 
-  map.addControl(
-    new maplibregl.AttributionControl({ compact: true }),
-    "bottom-right"
-  );
+// Mini map of UK city-regions (Macro context for bus journeys chart)
+initMiniMap();
 
-  setTimeout(() => map.resize(), 250);
+function initMiniMap() {
+  const svg = d3.select("#overview-mini-map");
+  if (!svg.node()) return;
 
-  map.on("load", () => {
-    // Muted basemap: make the map feel like an editorial background
-    const style = map.getStyle();
+  const width = svg.node().clientWidth;
+  const height = svg.node().clientHeight;
 
-    style.layers.forEach((layer) => {
-      if (layer.type === "symbol") {
-        map.setPaintProperty(layer.id, "text-opacity", 0.45);
-        map.setPaintProperty(layer.id, "icon-opacity", 0.35);
-      }
+  const projection = d3.geoMercator()
+    .center([-2, 53])
+    .scale(2200)
+    .translate([width / 2, height / 2]);
 
-      if (layer.type === "line") {
-        map.setPaintProperty(layer.id, "line-opacity", 0.38);
-      }
+  const path = d3.geoPath().projection(projection);
 
-      if (layer.type === "fill") {
-        map.setPaintProperty(layer.id, "fill-opacity", 0.72);
-      }
-    });
+  d3.json("data/overview/regions_england.geojson").then(data => {
 
-    map.addSource("overview-gmal-bus", {
-      type: "geojson",
-      data: geojson,
-    });
+    let selected = "Greater Manchester"; // default
 
-    // Soft background field: very subtle, not a heatmap blob
-    map.addLayer({
-      id: "overview-bus-field",
-      type: "circle",
-      source: "overview-gmal-bus",
-      paint: {
-        "circle-radius": [
-          "interpolate",
-          ["linear"],
-          ["get", "bus"],
-          0, 0.8,
-          8, 1.4,
-          18, 2.4,
-          30, 3.4
-        ],
-        "circle-color": [
-          "interpolate",
-          ["linear"],
-          ["get", "bus"],
-          0, "rgba(170,170,170,0.16)",
-          8, "rgba(255,170,130,0.38)",
-          18, "rgba(255,110,70,0.62)",
-          30, "rgba(255,80,40,0.88)"
-        ],
-        "circle-opacity": [
-          "interpolate",
-          ["linear"],
-          ["get", "bus"],
-          0, 0.18,
-          8, 0.36,
-          18, 0.58,
-          30, 0.78
-        ],
-        "circle-stroke-width": 0
-      }
-    });
+    svg.selectAll("path")
+      .data(data.features)
+      .enter()
+      .append("path")
+      .attr("d", path)
+      .attr("fill", d =>
+        d.properties.region_clean === selected ? "#ff4b25" : "#d9d9d9"
+      )
+      .attr("stroke", "#fff")
+      .attr("stroke-width", 1)
+      .style("cursor", "pointer")
 
-    // Stronger dots for high bus accessibility cells
-    map.addLayer({
-      id: "overview-bus-highlights",
-      type: "circle",
-      source: "overview-gmal-bus",
-      filter: [">=", ["get", "bus"], 18],
-      paint: {
-        "circle-radius": [
-          "interpolate",
-          ["linear"],
-          ["get", "bus"],
-          18, 2.8,
-          30, 5.4
-        ],
-        "circle-color": "#ff5a2f",
-        "circle-opacity": 0.72,
-        "circle-stroke-color": "rgba(255,255,255,0.75)",
-        "circle-stroke-width": 0.45
-      }
-    });
+      // CLICK INTERACTION
+      .on("click", function (event, d) {
+        selected = d.properties.region_clean;
 
-    // Manchester focal point
-    const markerEl = document.createElement("div");
-    markerEl.className = "overview-centre-marker";
-    markerEl.innerHTML = `<span></span>`;
+        // highlight map
+        svg.selectAll("path")
+          .transition()
+          .duration(300)
+          .attr("fill", p =>
+            p.properties.region_clean === selected
+              ? "#ff4b25"
+              : "#d9d9d9"
+          );
 
-    new maplibregl.Marker({ element: markerEl, anchor: "center" })
-      .setLngLat([-2.245, 53.48])
-      .addTo(map);
+        // CONNECT TO CHART
+        updateChart(selected);
+      })
 
-    map.resize();
+      // hover effect
+      .on("mouseover", function () {
+        d3.select(this).attr("opacity", 0.7);
+      })
+      .on("mouseout", function () {
+        d3.select(this).attr("opacity", 1);
+      });
   });
+}
+
+function updateChart(region) {
+  console.log("Selected:", region);
 }
