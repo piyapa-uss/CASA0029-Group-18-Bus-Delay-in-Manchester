@@ -2,6 +2,178 @@
 // IMPACT SECTION (JACOB)
 // ================================
 
+// metric configurations: each defines the field, units, color steps and legend rows
+// shared red ramp across metrics so "darker = higher exposure / more deprived" reads consistently
+const IMPACT_METRICS = {
+  delay: {
+    field: "avg_delay.x",
+    label: "Average bus delay",
+    unit: "min",
+    nodataValue: -1,
+    clampMax: 12,
+    // mapbox step expression stops (threshold, color)
+    stops: [
+      [0, "#F6F7F1"],
+      [2, "#f7d8d4"],
+      [4, "#f29b99"],
+      [6, "#f0625d"],
+      [8, "#eb4e43"]
+    ],
+    legend: [
+      { color: "#eb4e43", label: "8+ min" },
+      { color: "#f0625d", label: "6 – 8 min" },
+      { color: "#f29b99", label: "4 – 6 min" },
+      { color: "#f7d8d4", label: "2 – 4 min" },
+      { color: "#F6F7F1", label: "0 – 2 min" },
+      { color: "#E0E0E0", label: "No data" }
+    ]
+  },
+  imd: {
+    field: "index_of_multiple_deprivation_imd_score",
+    label: "IMD score",
+    unit: "",
+    nodataValue: -1,
+    clampMax: 200,
+    stops: [
+      [0,  "#F6F7F1"],
+      [10, "#f7d8d4"],
+      [20, "#f29b99"],
+      [30, "#f0625d"],
+      [40, "#eb4e43"]
+    ],
+    legend: [
+      { color: "#eb4e43", label: "40+ (most deprived)" },
+      { color: "#f0625d", label: "30 – 40" },
+      { color: "#f29b99", label: "20 – 30" },
+      { color: "#f7d8d4", label: "10 – 20" },
+      { color: "#F6F7F1", label: "0 – 10 (least deprived)" },
+      { color: "#E0E0E0", label: "No data" }
+    ]
+  },
+  percentile: {
+    // lower percentile = more deprived in the IoD convention; flip the ramp so darkest = lowest percentile
+    field: "deprivation_percentile",
+    label: "Deprivation percentile",
+    unit: "%",
+    nodataValue: -1,
+    clampMax: 200,
+    stops: [
+      [0,  "#eb4e43"],
+      [20, "#f0625d"],
+      [40, "#f29b99"],
+      [60, "#f7d8d4"],
+      [80, "#F6F7F1"]
+    ],
+    legend: [
+      { color: "#eb4e43", label: "0 – 20% (most deprived)" },
+      { color: "#f0625d", label: "20 – 40%" },
+      { color: "#f29b99", label: "40 – 60%" },
+      { color: "#f7d8d4", label: "60 – 80%" },
+      { color: "#F6F7F1", label: "80 – 100% (least deprived)" },
+      { color: "#E0E0E0", label: "No data" }
+    ]
+  }
+};
+
+// build a mapbox `fill-color` step expression from a metric config
+function buildFillExpression(metric) {
+  const input = ["min", ["coalesce", ["get", metric.field], metric.nodataValue], metric.clampMax];
+  const expr = ["step", input, "#E0E0E0"];
+  metric.stops.forEach(([threshold, color]) => {
+    expr.push(threshold, color);
+  });
+  return expr;
+}
+
+// render the legend swatches into a container element based on metric config
+function renderImpactLegend(container, metric) {
+  container.innerHTML = metric.legend.map(item => `
+    <div class="legend-item">
+      <span class="legend-dot" style="background:${item.color}"></span>
+      ${item.label}
+    </div>
+  `).join("");
+}
+
+// inject impact-section styles via JS so style.css stays untouched
+// every selector is scoped under #impact to avoid leaking into other sections
+function injectImpactStyles() {
+  if (document.getElementById("impact-injected-styles")) return;
+
+  const css = `
+    #impact .impact-controls {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    #impact .metric-toggle {
+      display: inline-flex;
+      background: #f3f1ea;
+      border: 1px solid #e6e3d8;
+      border-radius: 999px;
+      padding: 3px;
+    }
+
+    #impact .metric-btn {
+      border: 0;
+      background: transparent;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--grey-mid);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    #impact .metric-btn:hover {
+      color: var(--ink);
+    }
+
+    #impact .metric-btn.is-active {
+      background: #1f1f1f;
+      color: #fff;
+    }
+
+    #impact .lad-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--grey-mid);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    #impact .lad-toggle input {
+      margin: 0;
+      cursor: pointer;
+      accent-color: #1f1f1f;
+    }
+
+    #impact .impact-legend { flex-wrap: wrap; }
+
+    #impact .impact-map-wrapper:fullscreen {
+      background: #fff;
+      padding: 20px;
+      overflow: auto;
+    }
+
+    #impact .impact-map-wrapper:fullscreen .impact-map-canvas {
+      height: calc(100vh - 280px);
+      min-height: 420px;
+    }
+  `;
+
+  const styleEl = document.createElement("style");
+  styleEl.id = "impact-injected-styles";
+  styleEl.textContent = css;
+  document.head.appendChild(styleEl);
+}
+
 async function initImpactSection() {
   const mobilityEl = document.getElementById("impact-mobility");
   const socioEl = document.getElementById("impact-socioeconomic");
@@ -9,6 +181,7 @@ async function initImpactSection() {
 
   if (!mobilityEl || !socioEl || !mapEl) return;
 
+  injectImpactStyles();
   renderMobilityImpact(mobilityEl);
   renderSocioeconomicContext(socioEl);
   renderImpactMap(mapEl);
@@ -28,6 +201,10 @@ const impactMap = new mapboxgl.Map({
 
 impactMap.addControl(new mapboxgl.NavigationControl(), "top-right"); //adds navigation controls for map
 
+// fullscreen toggle — targets the whole wrapper so toggle / legend / charts stay visible in fullscreen
+const mapWrapper = mapEl.querySelector(".impact-map-wrapper");
+impactMap.addControl(new mapboxgl.FullscreenControl({ container: mapWrapper }), "top-right");
+
 setTimeout(() => {
   impactMap.resize();
 }, 100);
@@ -36,11 +213,23 @@ window.addEventListener("resize", () => {
   impactMap.resize();
 });
 
+// keep map sized correctly when entering / exiting fullscreen on the wrapper
+document.addEventListener("fullscreenchange", () => {
+  setTimeout(() => impactMap.resize(), 50);
+});
+
+let currentMetric = IMPACT_METRICS.delay;
+const legendEl = document.getElementById("impact-legend");
+renderImpactLegend(legendEl, currentMetric);
+
 const hoverInfo = document.getElementById("impact-hover-info"); //get hover info element to update with LSOA statistics on hover
 const stopDelayData = await loadCSV("data_raw/gm/impact_stop_delays.csv"); //load stop delay data for histogram, this is a separate CSV from the geojson used for the map to allow for more detailed delay distribution data at stop level
 
 const lsoaResponse = await fetch("data_raw/gm/impact_lsoa.geojson"); //load in geojson but as normal JS data
 const lsoaGeojson = await lsoaResponse.json();
+
+const ladResponse = await fetch("data/impact/gm_lad.geojson"); //load LAD boundaries for optional overlay
+const ladGeojson = await ladResponse.json();
 
 const allLsoaDelays = lsoaGeojson.features //extracts average delay values for all LSOAs to use in system comparison chart, filters out NAs to prevent issues with chart
   .map(feature => Number(feature.properties["avg_delay.x"]))
@@ -57,24 +246,13 @@ function addLsoaLayer() {
     data: lsoaGeojson
   });
 
-  //choropleth layer showing delay intensity by LSOA
+  //choropleth layer driven by current metric (default: avg delay)
   impactMap.addLayer({
     id: "lsoa-delay-fill",
     type: "fill",
     source: "lsoa-data",
     paint: {
-      "fill-color": [
-        "step",
-        ["min", ["coalesce", ["get", "avg_delay.x"], -1], 12],
-
-        "#E0E0E0",  //no data
-
-        0, "#F6F7F1",
-        2, "#f7d8d4",
-        4, "#f29b99",
-        6, "#f0625d",
-        8, "#eb4e43"
-      ],
+      "fill-color": buildFillExpression(currentMetric),
       "fill-opacity": 0.65
     }
   });
@@ -90,6 +268,24 @@ function addLsoaLayer() {
       "line-opacity": 0.5
     }
   });
+
+  // LAD boundary overlay — added on top, hidden by default until user toggles it on
+  impactMap.addSource("lad-data", {
+    type: "geojson",
+    data: ladGeojson
+  });
+
+  impactMap.addLayer({
+    id: "lad-outline",
+    type: "line",
+    source: "lad-data",
+    layout: { visibility: "none" },
+    paint: {
+      "line-color": "#1f1f1f",
+      "line-width": 1.4,
+      "line-opacity": 0.85
+    }
+  });
 }
 
 if (impactMap.loaded()) {
@@ -97,6 +293,35 @@ if (impactMap.loaded()) {
 } else {
   impactMap.on("load", addLsoaLayer);
 }
+
+// metric toggle — repaint choropleth + redraw legend on selection
+const metricButtons = document.querySelectorAll(".metric-btn");
+metricButtons.forEach(btn => {
+  btn.addEventListener("click", () => {
+    const key = btn.dataset.metric;
+    if (!IMPACT_METRICS[key] || currentMetric === IMPACT_METRICS[key]) return;
+
+    currentMetric = IMPACT_METRICS[key];
+
+    metricButtons.forEach(b => {
+      const active = b === btn;
+      b.classList.toggle("is-active", active);
+      b.setAttribute("aria-selected", active ? "true" : "false");
+    });
+
+    if (impactMap.getLayer("lsoa-delay-fill")) {
+      impactMap.setPaintProperty("lsoa-delay-fill", "fill-color", buildFillExpression(currentMetric));
+    }
+    renderImpactLegend(legendEl, currentMetric);
+  });
+});
+
+// LAD overlay toggle
+const ladToggle = document.getElementById("impact-lad-toggle");
+ladToggle.addEventListener("change", () => {
+  if (!impactMap.getLayer("lad-outline")) return;
+  impactMap.setLayoutProperty("lad-outline", "visibility", ladToggle.checked ? "visible" : "none");
+});
 
 //reacts to mouse movement from whole map, not just when hovering over LSOA polygons, allows for hover info to update when moving on and off polygons without needing to move mouse
 impactMap.on("mousemove", (e) => { 
@@ -253,31 +478,27 @@ function renderImpactMap(container) {
       <div class="impact-map-header">
         <div>
           <h5>Delay Exposure vs Socioeconomic Context</h5>
-          <p>Overlay of delay intensity and deprivation indicators</p>
+          <p>Switch between delay intensity and deprivation indicators</p>
         </div>
 
-        <div class="impact-legend">
-          <div class="legend-item">
-            <span class="legend-dot high"></span>
-            High delay
+        <div class="impact-controls">
+          <div class="metric-toggle" role="tablist" aria-label="Map metric">
+            <button type="button" class="metric-btn is-active" data-metric="delay" role="tab" aria-selected="true">Average Delay</button>
+            <button type="button" class="metric-btn" data-metric="imd" role="tab" aria-selected="false">IMD Score</button>
+            <button type="button" class="metric-btn" data-metric="percentile" role="tab" aria-selected="false">Deprivation Percentile</button>
           </div>
-          <div class="legend-item">
-            <span class="legend-dot medium"></span>
-            Medium
-          </div>
-          <div class="legend-item">
-            <span class="legend-dot low"></span>
-            Low
-          </div>
-          <div class="legend-item">
-            <span class="legend-dot nodata"></span>
-             No Data
-            </div>
+
+          <label class="lad-toggle">
+            <input type="checkbox" id="impact-lad-toggle" />
+            <span>Show LAD boundaries</span>
+          </label>
         </div>
       </div>
 
+      <div id="impact-legend" class="impact-legend"></div>
+
       <div id="impact-hover-info" class="impact-hover-info">
-        Hover over LSOA to see statistics
+        Hover over an LSOA to see delay and deprivation statistics
       </div>
 
       <div class="impact-visual-row">
