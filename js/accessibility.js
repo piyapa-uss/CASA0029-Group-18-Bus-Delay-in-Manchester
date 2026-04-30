@@ -84,12 +84,17 @@ function renderMacroAccessibilityMap(container) {
     <div class="gmal-panel" id="gmal-info">
       <h4>Greater Manchester Accessibility Levels</h4>
       <p class="gmal-info-desc">Higher values indicate higher accessibility.</p>
+      <p class="gmal-info-cap" id="gmal-metric-cap">Combined accessibility across all modes.</p>
       <p class="gmal-info-src">
         Source:
         <a href="https://www.data.gov.uk/dataset/d9dfbf0a-3cd7-4b12-a39f-0ec717423ee4/gm-accessibility-levels"
            target="_blank" rel="noopener">Transport for Greater Manchester</a>
       </p>
     </div>
+
+    <button class="gmal-icon-btn" id="gmal-fs-btn" title="Toggle fullscreen" aria-label="Toggle fullscreen">
+      <span id="gmal-fs-icon">⛶</span>
+    </button>
 
     <div id="gmal-controls">
       <div class="gmal-ctrl-group">
@@ -104,13 +109,20 @@ function renderMacroAccessibilityMap(container) {
 
       <div class="gmal-ctrl-group">
         <label>Metric</label>
-        <div class="gmal-btn-row">
+        <div class="gmal-btn-row gmal-metric-row">
           <button class="gmal-btn active" id="gmal-btn-overall"   data-mode="overall">Overall</button>
           <button class="gmal-btn"        id="gmal-btn-bus"       data-mode="bus">Bus</button>
           <button class="gmal-btn"        id="gmal-btn-rail"      data-mode="rail">Rail</button>
           <button class="gmal-btn"        id="gmal-btn-metro"     data-mode="metro">Metro</button>
           <button class="gmal-btn"        id="gmal-btn-locallink" data-mode="locallink">Local Link</button>
         </div>
+        <select class="gmal-metric-select" id="gmal-metric-select" aria-label="Metric">
+          <option value="overall" selected>Overall</option>
+          <option value="bus">Bus</option>
+          <option value="rail">Rail</option>
+          <option value="metro">Metro</option>
+          <option value="locallink">Local Link</option>
+        </select>
       </div>
 
       <div class="gmal-ctrl-sep"></div>
@@ -122,16 +134,17 @@ function renderMacroAccessibilityMap(container) {
           <span id="gmal-h-val">1.0×</span>
         </div>
       </div>
-
-      <div class="gmal-ctrl-sep"></div>
-
-      <div class="gmal-ctrl-group">
-        <label>View</label>
-        <button class="gmal-btn" id="gmal-fs-btn" title="Toggle fullscreen" aria-label="Toggle fullscreen">
-          <span id="gmal-fs-icon">⛶</span>&nbsp;<span id="gmal-fs-label">Fullscreen</span>
-        </button>
-      </div>
     </div>
+
+    <div class="gmal-hint" id="gmal-hint">
+      Click a borough to zoom in · Drag to pan · Right-drag to rotate
+    </div>
+
+    <button class="gmal-reset-btn" id="gmal-reset-btn" type="button" style="display:none">
+      <span class="gmal-reset-arrow">&larr;</span>
+      <span>Back to Greater Manchester</span>
+      <span class="gmal-reset-name"></span>
+    </button>
 
     <div class="gmal-panel" id="gmal-level-legend">
       <h4>GMAL Level</h4>
@@ -228,15 +241,33 @@ function bootGmal3DMap(root) {
     "2026": { count: 0, min: 0, max: 0, avg: 0 },
   };
   let MAX_SCORE = 1;
+  let LAD_GEOJSON = null;
 
   async function loadData() {
-    const [d16, d26] = await Promise.all([
+    const [d16, d26, lads] = await Promise.all([
       fetch("data/accessibility/gmal_2016.json").then(r => r.json()),
       fetch("data/accessibility/gmal_2026.json").then(r => r.json()),
+      fetch("data/accessibility/gm_lad.geojson").then(r => r.json()),
     ]);
     DATA["2016"]  = d16.data;  STATS["2016"] = d16.stats;
     DATA["2026"]  = d26.data;  STATS["2026"] = d26.stats;
     MAX_SCORE = Math.max(STATS["2016"].max, STATS["2026"].max);
+    LAD_GEOJSON = lads;
+  }
+
+  // ---- Initial view + bbox helper ----
+  const INIT_VIEW = { center: [-2.24, 53.48], zoom: 10.2, pitch: 52, bearing: -12 };
+  function geomBBox(geom) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    (function walk(c) {
+      if (typeof c[0] === "number") {
+        if (c[0] < minX) minX = c[0];
+        if (c[1] < minY) minY = c[1];
+        if (c[0] > maxX) maxX = c[0];
+        if (c[1] > maxY) maxY = c[1];
+      } else for (const x of c) walk(x);
+    })(geom.coordinates);
+    return [[minX, minY], [maxX, maxY]];
   }
 
   // ---- Colours ----
@@ -368,6 +399,80 @@ function bootGmal3DMap(root) {
     }
     map.on("move", syncDeckToMap);
 
+    // ---- LAD click-to-zoom layer ----
+    if (LAD_GEOJSON) {
+      map.addSource("gm-lad", { type: "geojson", data: LAD_GEOJSON, promoteId: "LADNM" });
+      map.addLayer({
+        id: "gm-lad-fill",
+        type: "fill",
+        source: "gm-lad",
+        paint: {
+          "fill-color": "#58a6ff",
+          "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 0.18, 0.0],
+        },
+      });
+      map.addLayer({
+        id: "gm-lad-line",
+        type: "line",
+        source: "gm-lad",
+        paint: {
+          "line-color": "rgba(255,255,255,0.30)",
+          "line-width": ["case", ["boolean", ["feature-state", "hover"], false], 2.0, 1.0],
+        },
+      });
+
+      const ladByName = {};
+      LAD_GEOJSON.features.forEach(f => { ladByName[f.properties.LADNM] = f; });
+
+      let hoveredLad = null;
+      map.on("mousemove", "gm-lad-fill", (e) => {
+        if (!e.features.length) return;
+        const id = e.features[0].id;
+        if (hoveredLad !== null && hoveredLad !== id) {
+          map.setFeatureState({ source: "gm-lad", id: hoveredLad }, { hover: false });
+        }
+        hoveredLad = id;
+        map.setFeatureState({ source: "gm-lad", id }, { hover: true });
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", "gm-lad-fill", () => {
+        if (hoveredLad !== null) {
+          map.setFeatureState({ source: "gm-lad", id: hoveredLad }, { hover: false });
+        }
+        hoveredLad = null;
+        map.getCanvas().style.cursor = "";
+      });
+
+      map.on("click", "gm-lad-fill", (e) => {
+        if (!e.features.length) return;
+        const name = e.features[0].properties.LADNM;
+        const full = ladByName[name];
+        if (!full) return;
+        const bbox = geomBBox(full.geometry);
+        map.fitBounds(bbox, {
+          padding: 40,
+          pitch: INIT_VIEW.pitch,
+          bearing: INIT_VIEW.bearing,
+          duration: 900,
+          maxZoom: 13.5,
+        });
+        const btn = $("gmal-reset-btn");
+        btn.style.display = "inline-flex";
+        btn.querySelector(".gmal-reset-name").textContent = name;
+      });
+
+      $("gmal-reset-btn").addEventListener("click", () => {
+        map.flyTo({
+          center: INIT_VIEW.center,
+          zoom: INIT_VIEW.zoom,
+          pitch: INIT_VIEW.pitch,
+          bearing: INIT_VIEW.bearing,
+          duration: 900,
+        });
+        $("gmal-reset-btn").style.display = "none";
+      });
+    }
+
     const mapEl = $("gmal-map");
     mapEl.addEventListener("mousemove", (e) => {
       const rect = mapEl.getBoundingClientRect();
@@ -428,22 +533,31 @@ function bootGmal3DMap(root) {
     redraw();
   }
 
+  const METRIC_CAPS = {
+    overall:   "Combined accessibility across all modes.",
+    bus:       "Bus-only accessibility (higher = better service).",
+    rail:      "National rail accessibility score.",
+    metro:     "Metrolink tram accessibility score.",
+    locallink: "Local Link demand-responsive transport score.",
+  };
+  const METRIC_LABELS = {
+    bus: "Bus Score",
+    rail: "Rail Score",
+    metro: "Metro Score",
+    locallink: "Local Link Score",
+  };
+
   function setMode(mode) {
     currentMode = mode;
     ["overall","bus","rail","metro","locallink"].forEach(m =>
       $("gmal-btn-"+m).classList.toggle("active", m === mode));
+    const sel = $("gmal-metric-select");
+    if (sel && sel.value !== mode) sel.value = mode;
     const isOverall = mode === "overall";
     $("gmal-level-legend").style.display = isOverall ? "" : "none";
     $("gmal-grad-legend").style.display  = isOverall ? "none" : "";
-    if (!isOverall) {
-      const labels = {
-        bus: "Bus Score",
-        rail: "Rail Score",
-        metro: "Metro Score",
-        locallink: "Local Link Score",
-      };
-      $("gmal-grad-title").textContent = labels[mode];
-    }
+    if (!isOverall) $("gmal-grad-title").textContent = METRIC_LABELS[mode];
+    $("gmal-metric-cap").textContent = METRIC_CAPS[mode] || "";
     redraw();
   }
 
@@ -459,6 +573,8 @@ function bootGmal3DMap(root) {
   root.querySelectorAll("[data-mode]").forEach(btn =>
     btn.addEventListener("click", () => setMode(btn.dataset.mode)));
   $("gmal-h-slider").addEventListener("input", (e) => setHeight(e.target.value));
+  const metricSel = $("gmal-metric-select");
+  if (metricSel) metricSel.addEventListener("change", (e) => setMode(e.target.value));
 
   // ---- Fullscreen ----
   function isFullscreen() {
@@ -477,7 +593,7 @@ function bootGmal3DMap(root) {
     const fs = isFullscreen();
     root.classList.toggle("gmal-fs", fs);
     $("gmal-fs-icon").textContent  = fs ? "⤫" : "⛶";
-    $("gmal-fs-label").textContent = fs ? "Exit"  : "Fullscreen";
+    $("gmal-fs-btn").setAttribute("title", fs ? "Exit fullscreen" : "Toggle fullscreen");
     // Resize map + deck after layout settles
     setTimeout(() => { if (map) map.resize(); }, 60);
   }
@@ -517,11 +633,66 @@ function injectGmalStyles() {
     .gmal-3d-shell #gmal-controls {
       position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
       z-index: 100; display: flex; align-items: center; gap: 14px;
+      flex-wrap: wrap; justify-content: center;
+      max-width: calc(100% - 100px);
       background: rgba(13,17,23,.90); border: 1px solid rgba(255,255,255,.10);
       border-radius: 14px; padding: 10px 20px;
       backdrop-filter: blur(14px); box-shadow: 0 4px 28px rgba(0,0,0,.45);
-      white-space: nowrap; font-family: 'Segoe UI', Roboto, sans-serif;
+      font-family: 'Segoe UI', Roboto, sans-serif;
     }
+    .gmal-3d-shell .gmal-metric-select { display: none; }
+    .gmal-3d-shell #gmal-controls .gmal-ctrl-group { min-width: 0; }
+    @media (max-width: 720px) {
+      .gmal-3d-shell #gmal-controls { gap: 10px; padding: 8px 14px; }
+      .gmal-3d-shell .gmal-ctrl-sep { display: none; }
+      .gmal-3d-shell #gmal-controls .gmal-metric-row { display: none !important; }
+      .gmal-3d-shell .gmal-metric-select {
+        display: block; padding: 5px 8px; font-size: 11px;
+        background: rgba(255,255,255,.06); color: #e6edf3;
+        border: 1px solid rgba(255,255,255,.12); border-radius: 6px;
+        font-family: inherit; cursor: pointer;
+      }
+      .gmal-3d-shell #gmal-info { display: none; }
+      .gmal-3d-shell #gmal-stats-panel { display: none; }
+      .gmal-3d-shell .gmal-hint { display: none; }
+    }
+    .gmal-3d-shell .gmal-icon-btn {
+      position: absolute; top: 14px; right: 14px; z-index: 110;
+      width: 34px; height: 34px; padding: 0; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(13,17,23,.90); color: #c9d1d9;
+      border: 1px solid rgba(255,255,255,.12); border-radius: 8px;
+      backdrop-filter: blur(14px); font-size: 15px;
+      transition: background .15s, color .15s;
+    }
+    .gmal-3d-shell .gmal-icon-btn:hover { background: #1f6feb; color: #fff; }
+    .gmal-3d-shell .gmal-hint {
+      position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
+      z-index: 90; padding: 5px 12px; pointer-events: none;
+      background: rgba(13,17,23,.75); border: 1px solid rgba(255,255,255,.08);
+      border-radius: 999px; backdrop-filter: blur(8px);
+      font-size: 10px; color: #8b949e; letter-spacing: .3px;
+      font-family: 'Segoe UI', Roboto, sans-serif;
+    }
+    .gmal-3d-shell .gmal-reset-btn {
+      position: absolute; bottom: 16px; left: 16px; z-index: 110;
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px; cursor: pointer;
+      background: rgba(13,17,23,.92); color: #58a6ff;
+      border: 1px solid rgba(88,166,255,.35); border-radius: 999px;
+      backdrop-filter: blur(8px);
+      font-size: 11px; font-weight: 600;
+      font-family: 'Segoe UI', Roboto, sans-serif;
+      transition: background .15s, color .15s;
+    }
+    .gmal-3d-shell .gmal-reset-btn:hover { background: #1f6feb; color: #fff; border-color: #1f6feb; }
+    .gmal-3d-shell .gmal-reset-arrow { font-size: 13px; line-height: 1; }
+    .gmal-3d-shell .gmal-reset-name {
+      padding: 1px 7px; border-radius: 999px;
+      background: rgba(88,166,255,.18); color: #c9d1d9;
+      font-size: 10px; font-weight: 500;
+    }
+    .gmal-3d-shell .gmal-reset-name:empty { display: none; }
     .gmal-3d-shell .gmal-ctrl-title { font-size: 13px; font-weight: 700; color: #e6edf3; }
     .gmal-3d-shell .gmal-ctrl-title span { color: #58a6ff; }
     .gmal-3d-shell .gmal-ctrl-sep { width: 1px; height: 24px; background: rgba(255,255,255,.10); }
@@ -556,24 +727,25 @@ function injectGmalStyles() {
       font-size: 12px; color: #e6edf3; text-transform: none;
       letter-spacing: 0; font-weight: 700; margin: 0 0 6px;
     }
-    .gmal-3d-shell .gmal-info-desc { font-size: 11px; color: #c9d1d9; margin: 0 0 6px; line-height: 1.4; }
+    .gmal-3d-shell .gmal-info-desc { font-size: 11px; color: #c9d1d9; margin: 0 0 4px; line-height: 1.4; }
+    .gmal-3d-shell .gmal-info-cap  { font-size: 10px; color: #58a6ff; margin: 0 0 6px; line-height: 1.4; font-style: italic; }
     .gmal-3d-shell .gmal-info-src  { font-size: 10px; color: #8b949e; margin: 0; line-height: 1.4; }
     .gmal-3d-shell .gmal-info-src a { color: #58a6ff; text-decoration: none; }
     .gmal-3d-shell .gmal-info-src a:hover { text-decoration: underline; }
 
-    .gmal-3d-shell #gmal-level-legend { bottom: 16px; left: 16px; }
+    .gmal-3d-shell #gmal-level-legend { bottom: 16px; right: 16px; }
     .gmal-3d-shell .gmal-lgd-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
     .gmal-3d-shell .gmal-lgd-box { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
     .gmal-3d-shell .gmal-lgd-txt { font-size: 10px; color: #c9d1d9; }
 
-    .gmal-3d-shell #gmal-grad-legend { bottom: 16px; left: 16px; min-width: 160px; display: none; }
+    .gmal-3d-shell #gmal-grad-legend { bottom: 16px; right: 16px; min-width: 160px; display: none; }
     .gmal-3d-shell .gmal-grad-bar {
       height: 12px; border-radius: 3px; margin: 5px 0 4px;
       background: linear-gradient(to right, #6b0000, #d73027, #fdae61, #a6d96a, #1a9850, #006837);
     }
     .gmal-3d-shell .gmal-grad-labels { display: flex; justify-content: space-between; font-size: 9px; color: #8b949e; }
 
-    .gmal-3d-shell #gmal-stats-panel { bottom: 44px; right: 16px; min-width: 175px; }
+    .gmal-3d-shell #gmal-stats-panel { top: 60px; right: 14px; min-width: 175px; }
     .gmal-3d-shell .gmal-stat-row { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 4px; }
     .gmal-3d-shell .gmal-stat-k { font-size: 10px; color: #8b949e; }
     .gmal-3d-shell .gmal-stat-v { font-size: 10px; color: #e6edf3; font-weight: 700; }
@@ -614,4 +786,8 @@ function injectGmalStyles() {
 // -------------------------------
 // INIT
 // -------------------------------
-initAccessibilitySection();
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initAccessibilitySection);
+} else {
+  initAccessibilitySection();
+}

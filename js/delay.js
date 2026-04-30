@@ -549,7 +549,7 @@ function bootDelayDashboard(root, payload) {
 
       <div class="dly-srch-wrap" style="margin-bottom:14px">
         <input class="dly-srch-input" id="dly-netSrch" type="text"
-               placeholder="Search any stop across the network…" autocomplete="off">
+               placeholder="Search any route or stop…" autocomplete="off">
         <div class="dly-srch-drop" id="dly-netSdrop"></div>
       </div>
 
@@ -1415,19 +1415,29 @@ function bootDelayDashboard(root, payload) {
     });
   }
 
-  // ---------------- network-wide stop search ----------------
-  // Flat index of every stop on every route, lazily built once.
-  let netSearchIndex = null;
+  // ---------------- network-wide search (routes + stops) ----------------
+  // Two flat indexes — routes first (small), stops second (~10k). Built once.
+  let netRouteIndex = null;
+  let netStopIndex  = null;
   function buildNetSearchIndex() {
-    if (netSearchIndex) return netSearchIndex;
-    const arr = [];
+    if (netRouteIndex && netStopIndex) return;
+    const routes = [];
+    const stops = [];
     Object.keys(ROUTES).forEach(rk => {
       const r = ROUTES[rk];
+      routes.push({
+        kind:      "route",
+        routeKey:  rk,
+        routeName: r.name,
+        dirId:     r.direction_id,
+        direction: r.direction || "",
+        nameLC:    String(r.name).toLowerCase(),
+      });
       r.stops.forEach((s, i) => {
-        arr.push({
+        stops.push({
+          kind:       "stop",
           stopName:   s.name,
           stopNameLC: s.name.toLowerCase(),
-          stopId:     s.id,
           routeKey:   rk,
           routeName:  r.name,
           dirId:      r.direction_id,
@@ -1435,44 +1445,68 @@ function bootDelayDashboard(root, payload) {
         });
       });
     });
-    netSearchIndex = arr;
-    return arr;
+    netRouteIndex = routes;
+    netStopIndex  = stops;
   }
 
   function renderNetSearch(q) {
     const drop = $("dly-netSdrop");
-    const ix = buildNetSearchIndex();
+    buildNetSearchIndex();
     const needle = (q || "").trim().toLowerCase();
-    let rows = needle
-      ? ix.filter(r => r.stopNameLC.includes(needle))
-      : [];
-    rows = rows.slice(0, 80);
-    if (!rows.length) {
-      drop.innerHTML = needle
-        ? `<div style="padding:8px 12px;font-size:12px;color:var(--dly-text-secondary)">no stops found</div>`
-        : `<div style="padding:8px 12px;font-size:12px;color:var(--dly-text-secondary)">type to search any stop on any route</div>`;
-    } else {
-      drop.innerHTML = rows.map(r => {
-        const dirBadge = r.dirId != null ? ` · dir ${r.dirId}` : "";
-        return `<div class="dly-srow" data-rk="${r.routeKey}" data-si="${r.stopIdx}">
-          <div style="font-size:13px;color:var(--dly-text-primary)">${r.stopName}</div>
-          <div style="font-size:11px;color:var(--dly-text-secondary)">Route ${r.routeName}${dirBadge}</div>
-        </div>`;
-      }).join("");
-      drop.querySelectorAll("[data-rk]").forEach(el => {
-        el.addEventListener("click", () => {
-          const rk = el.dataset.rk;
-          const si = parseInt(el.dataset.si, 10);
-          drop.style.display = "none";
-          drop.closest(".dly-srch-wrap").classList.remove("is-open");
-          $("dly-netSrch").value = "";
-          goRoute(rk);
-          // Wait for goRoute to load details and render the stop UI before
-          // selecting the requested stop.
-          loadDetails().then(() => pickStop(si));
-        });
-      });
+    if (!needle) {
+      drop.innerHTML = `<div style="padding:8px 12px;font-size:12px;color:var(--dly-text-secondary)">type a route number or stop name</div>`;
+      return;
     }
+
+    // Route matches: prefix preferred, substring fallback.
+    const routePrefix = netRouteIndex.filter(r => r.nameLC.startsWith(needle));
+    const routeSubstr = netRouteIndex.filter(r =>
+      !r.nameLC.startsWith(needle) && r.nameLC.includes(needle));
+    const routeMatches = [...routePrefix, ...routeSubstr];
+    // Stop matches.
+    const stopMatches = netStopIndex.filter(s => s.stopNameLC.includes(needle));
+
+    if (!routeMatches.length && !stopMatches.length) {
+      drop.innerHTML = `<div style="padding:8px 12px;font-size:12px;color:var(--dly-text-secondary)">no routes or stops match</div>`;
+      return;
+    }
+
+    const sectionHeader = lbl => `<div style="padding:6px 12px;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--dly-text-tertiary);background:var(--dly-bg-secondary)">${lbl}</div>`;
+    const dirBadge = d => d != null ? ` · dir ${d}` : "";
+
+    let html = "";
+    if (routeMatches.length) {
+      html += sectionHeader(`routes (${routeMatches.length})`);
+      html += routeMatches.slice(0, 30).map(r => `
+        <div class="dly-srow" data-rk="${r.routeKey}" data-si="">
+          <div style="font-size:13px;color:var(--dly-text-primary);font-weight:600">Route ${r.routeName}${dirBadge(r.dirId)}</div>
+          <div style="font-size:11px;color:var(--dly-text-secondary)">${r.direction || "—"}</div>
+        </div>`).join("");
+    }
+    if (stopMatches.length) {
+      html += sectionHeader(`stops (${stopMatches.length})`);
+      html += stopMatches.slice(0, 80).map(s => `
+        <div class="dly-srow" data-rk="${s.routeKey}" data-si="${s.stopIdx}">
+          <div style="font-size:13px;color:var(--dly-text-primary)">${s.stopName}</div>
+          <div style="font-size:11px;color:var(--dly-text-secondary)">Route ${s.routeName}${dirBadge(s.dirId)}</div>
+        </div>`).join("");
+    }
+    drop.innerHTML = html;
+    drop.querySelectorAll("[data-rk]").forEach(el => {
+      el.addEventListener("click", () => {
+        const rk = el.dataset.rk;
+        const siStr = el.dataset.si;
+        drop.style.display = "none";
+        drop.closest(".dly-srch-wrap").classList.remove("is-open");
+        $("dly-netSrch").value = "";
+        goRoute(rk);
+        // Stop click jumps to that stop; route click stays on stop 0.
+        if (siStr !== "") {
+          const si = parseInt(siStr, 10);
+          loadDetails().then(() => pickStop(si));
+        }
+      });
+    });
   }
 
   // ---------------- wire-up ----------------
