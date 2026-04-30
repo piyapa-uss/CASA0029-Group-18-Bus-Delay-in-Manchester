@@ -391,14 +391,46 @@
         <p class="section-label">02</p>
         <h3>Accessibility & Bus Network Context</h3>
         <p class="section-note">
-          This section situates buses within Manchester’s wider transport system and introduces
-          the network structure that underpins later delay analysis.
+          This section situates the bus network within the broader public transport system
+          of Greater Manchester and introduces the spatial structure of accessibility that
+          frames the subsequent delay analysis.
         </p>
 
         <div class="content-card section-block">
           <h4>Manchester Transport Context</h4>
+
           <p>
-            Puk: short introduction text for this section.
+            Greater Manchester is a polycentric city-region of approximately 2.8 million
+            residents distributed across ten metropolitan boroughs (Bolton, Bury, Manchester,
+            Oldham, Rochdale, Salford, Stockport, Tameside, Trafford, and Wigan). Its
+            public transport system rests on three complementary modes. A dense bus
+            network accounts for the majority of trips, the Metrolink light rail radiates
+            outward from the city centre, and heavy rail connects the wider region. Because
+            buses carry the largest share of journeys, their reliability strongly conditions
+            the extent to which residents can access employment, services, and amenities.
+          </p>
+
+          <p>
+            The map below visualises <strong>Greater Manchester Accessibility Levels
+            (GMAL)</strong>, the standard accessibility measure adopted by Transport for
+            Greater Manchester. For each grid cell across the region, the GMAL methodology
+            combines walking distance to nearby stops and stations with the frequency of
+            services serving them, producing a composite score that ranges from 1 (very
+            low access) to 8 (excellent). Taller columns and bluer hues therefore indicate
+            locations from which more destinations can be reached, more frequently, within
+            walking distance.
+          </p>
+
+          <p>
+            The comparison between <strong>2016 and 2026</strong> is significant because
+            the bus network is being restructured during this period. Under the
+            <em>Bee Network</em> reforms, Greater Manchester became the first English
+            city-region outside London to return its bus services to public control,
+            ending the deregulated regime that had operated since 1986. Switching between
+            years reveals where service density has increased, decreased, or remained
+            broadly stable. The metric controls isolate the contributions of bus, rail,
+            Metrolink, and Local Link services, and clicking any borough zooms the view
+            to examine how accessibility varies at finer spatial scales.
           </p>
         </div>
 
@@ -406,6 +438,56 @@
           <h4>Macro-Level Accessibility Map</h4>
           <div id="accessibility-map" class="embed-shell large-shell">
             Ming: map2 will render here
+          </div>
+        </div>
+
+        <div class="content-card section-block">
+          <h4>Borough-level GMAL Comparison (2016 vs 2026)</h4>
+
+          <p>
+            The 3D map captures spatial detail at the grid-cell scale, but the wider
+            structural change is easier to read once values are aggregated to the ten
+            metropolitan boroughs. The heatmap below summarises the mean GMAL score
+            for each borough across the five accessibility components, comparing
+            2016 against 2026 side by side. Each row corresponds to one local
+            authority, sorted from highest to lowest 2016 overall accessibility.
+            Within each metric, the two columns share a common colour scale, so
+            darker blue indicates higher accessibility and a clear lightening
+            between columns marks a decline over the decade.
+          </p>
+
+          <div id="gmal-lad-heatmap" class="embed-shell large-shell">
+            Loading borough comparison&hellip;
+          </div>
+
+          <div class="impact-block" id="gmal-heatmap-insights">
+            <h5>What the heatmap shows</h5>
+            <ul>
+              <li>
+                <strong>Manchester is in a category of its own.</strong> Its overall
+                GMAL score is roughly three times that of the next-highest borough
+                in both years, reflecting the concentration of bus, rail and
+                Metrolink services on the central core.
+              </li>
+              <li>
+                <strong>Every borough loses overall accessibility between 2016 and
+                2026.</strong> The drop averages around twenty per cent, with the
+                largest relative declines in Bury, Bolton and Oldham.
+              </li>
+              <li>
+                <strong>The decline is driven by the bus component.</strong> Bus
+                scores fall in all ten boroughs, while rail accessibility actually
+                improves in most of them, most visibly in Stockport and Bolton.
+                Metro and Local Link contributions remain comparatively small
+                outside the central boroughs.
+              </li>
+              <li>
+                <strong>Outer boroughs are most exposed.</strong> Wigan, Rochdale
+                and Oldham combine the lowest baseline scores with the smallest
+                rail or Metrolink offset, so the bus-led decline translates almost
+                directly into a loss of overall reach.
+              </li>
+            </ul>
           </div>
         </div>
 
@@ -442,27 +524,26 @@
         <p class="section-label">03</p>
         <h3>Delay & Reliability Dashboard</h3>
         <p class="section-note">
-          This dashboard shows how Greater Manchester's bus network actually
-          performs day to day &mdash; where services run close to the timetable,
-          where they consistently arrive late, and how reliability shifts
-          between the morning peak, midday, and evening hours. Find a route
-          or a stop you use, and see what your typical delay looks like;
-          switch on the heatmap overlay to spot the neighbourhoods that
-          bear the worst delays across the network as a whole.
+          This dashboard examines the day-to-day performance of the Greater Manchester
+          bus network. It identifies where services operate close to scheduled times,
+          where they consistently arrive late, and how reliability varies across the
+          morning peak, midday, and evening periods. Users can locate a specific route
+          or stop to inspect its typical delay profile, and the heatmap overlay surfaces
+          the neighbourhoods that experience the most pronounced delays at a network-wide
+          scale.
         </p>
 
         <p class="section-note" style="margin-top:0.4em">
-          <strong>Coverage:</strong> only buses are shown (no Metrolink or
-          coach), and the dashboard is limited to <strong>265 of the
-          ~1,000 (route, direction) pairs</strong> operating in Greater
-          Manchester. Lines with too few recorded arrivals during our
-          observation window &mdash; school-only trips, infrequent or
-          demand-responsive services, rail-replacement runs, and routes
-          that started or ended mid-window &mdash; are filtered out,
-          because a handful of arrivals can't yield delay statistics
-          robust enough to compare against high-frequency services.
-          Each direction is reported separately, since the same route
-          number often follows different roads outbound versus inbound.
+          <strong>Coverage.</strong> The dashboard reports bus services only and excludes
+          Metrolink and coach operations. It covers <strong>265 of the approximately
+          1,000 (route, direction) pairs</strong> operating in Greater Manchester.
+          Lines with insufficient recorded arrivals during the observation window are
+          filtered from the analysis. These include school-only trips, infrequent or
+          demand-responsive services, rail-replacement runs, and routes that began or
+          ended part-way through the window. Such services do not yield delay statistics
+          robust enough to be compared against high-frequency lines. Each direction is
+          reported separately because the same route number frequently follows different
+          roads outbound and inbound.
         </p>
 
         <div class="cards-3 section-block">

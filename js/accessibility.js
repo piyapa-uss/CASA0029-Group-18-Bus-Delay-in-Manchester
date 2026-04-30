@@ -6,10 +6,12 @@ function initAccessibilitySection() {
   const mapEl        = document.getElementById("accessibility-map");
   const controlsEl   = document.getElementById("accessibility-controls");
   const sidepanelEl  = document.getElementById("accessibility-sidepanel");
+  const heatmapEl    = document.getElementById("gmal-lad-heatmap");
 
   if (mapEl)       renderMacroAccessibilityMap(mapEl);
   if (controlsEl)  renderAccessibilityControls(controlsEl);
   if (sidepanelEl) renderAccessibilitySidepanel(sidepanelEl);
+  if (heatmapEl)   renderGmalLadHeatmap(heatmapEl);
 }
 
 // -------------------------------
@@ -779,6 +781,310 @@ function injectGmalStyles() {
       border-radius: 50%; animation: gmal-spin .8s linear infinite;
     }
     @keyframes gmal-spin { to { transform: rotate(360deg); } }
+  `;
+  document.head.appendChild(s);
+}
+
+// -------------------------------
+// BOROUGH-LEVEL GMAL HEATMAP
+// -------------------------------
+function renderGmalLadHeatmap(container) {
+  injectGmalHeatmapStyles();
+  container.classList.remove("large-shell");
+  container.innerHTML = `<div class="gmal-hm-loading">Loading borough comparison&hellip;</div>`;
+  fetch("data/accessibility/gmal_lad_means.csv")
+    .then(r => r.text())
+    .then(csv => drawGmalLadHeatmap(container, parseGmalLadCsv(csv)))
+    .catch(err => {
+      console.error("[gmal-lad-heatmap] failed:", err);
+      container.innerHTML =
+        `<div class="gmal-hm-loading">Failed to load borough comparison data.</div>`;
+    });
+}
+
+function parseGmalLadCsv(text) {
+  const lines = text.trim().split(/\r?\n/);
+  const cols = lines.shift().split(",");
+  const out = {};
+  for (const line of lines) {
+    const vals = line.split(",");
+    const row = {};
+    cols.forEach((c, i) => {
+      row[c] = (i >= 2) ? parseFloat(vals[i]) : vals[i];
+    });
+    if (!out[row.LADNM]) out[row.LADNM] = {};
+    out[row.LADNM][row.year] = row;
+  }
+  return out;
+}
+
+function drawGmalLadHeatmap(container, byLad) {
+  const METRICS = [
+    ["overall",   "Overall"],
+    ["bus",       "Bus"],
+    ["rail",      "Rail"],
+    ["metro",     "Metro"],
+    ["locallink", "Local Link"],
+  ];
+  const YEARS = ["2016", "2026"];
+
+  const lads = Object.keys(byLad).sort(
+    (a, b) => byLad[b]["2016"].overall - byLad[a]["2016"].overall
+  );
+
+  // per-metric max across both years for shared scale within each metric pair
+  const maxOf = {};
+  for (const [m] of METRICS) {
+    let mx = 0;
+    for (const l of lads) for (const y of YEARS) {
+      const v = byLad[l][y][m];
+      if (v > mx) mx = v;
+    }
+    maxOf[m] = mx || 1;
+  }
+
+  const colorFor = (val, max) => {
+    const t = Math.max(0, Math.min(1, val / max));
+    const r = Math.round(22  + (88  - 22)  * t);
+    const g = Math.round(34  + (166 - 34)  * t);
+    const b = Math.round(54  + (255 - 54)  * t);
+    return `rgb(${r},${g},${b})`;
+  };
+  const textFor = (val, max) => (val / max) > 0.55 ? "#0d1117" : "#e6edf3";
+  const fmt = v => (v < 1 ? v.toFixed(2) : v.toFixed(1));
+
+  let html = `<div class="gmal-hm-wrap"><div class="gmal-hm">`;
+
+  // row 1 — corner + metric group headers (each spanning 2 columns)
+  html += `<div class="gmal-hm-corner">Borough</div>`;
+  for (const [, label] of METRICS) {
+    html += `<div class="gmal-hm-group" style="grid-column: span 2">${label}</div>`;
+  }
+
+  // row 2 — empty corner + year sub-headers
+  html += `<div class="gmal-hm-spacer"></div>`;
+  for (const _ of METRICS) {
+    for (const y of YEARS) html += `<div class="gmal-hm-year">${y}</div>`;
+  }
+
+  // body rows
+  for (const lad of lads) {
+    html += `<div class="gmal-hm-lad">${lad}</div>`;
+    for (const [m] of METRICS) {
+      for (const y of YEARS) {
+        const v = byLad[lad][y][m];
+        const bg = colorFor(v, maxOf[m]);
+        const fg = textFor(v, maxOf[m]);
+        html += `<div class="gmal-hm-cell" style="background:${bg};color:${fg}" title="${lad} · ${y} · ${m}: ${v.toFixed(2)}">${fmt(v)}</div>`;
+      }
+    }
+  }
+
+  html += `</div>`; // .gmal-hm
+
+  // legend
+  html += `
+    <div class="gmal-hm-legend">
+      <div class="gmal-hm-lgd-block">
+        <div class="gmal-hm-lgd-bar"></div>
+        <div class="gmal-hm-lgd-labels"><span>Lower</span><span>Higher</span></div>
+      </div>
+      <div class="gmal-hm-lgd-note">
+        Each metric is scaled independently across the two years, so colour
+        intensity is comparable between 2016 and 2026 within the same column
+        pair but not across different metrics.
+      </div>
+    </div>
+  `;
+
+  // ---- Δ panel (2026 minus 2016, diverging palette) ----
+  // Per-metric symmetric scale around zero, so the neutral colour always means "no change".
+  const absMaxOf = {};
+  for (const [m] of METRICS) {
+    let mx = 0;
+    for (const l of lads) {
+      const d = byLad[l]["2026"][m] - byLad[l]["2016"][m];
+      if (Math.abs(d) > mx) mx = Math.abs(d);
+    }
+    absMaxOf[m] = mx || 1;
+  }
+
+  const divergingFor = (delta, absMax) => {
+    const t = Math.max(-1, Math.min(1, delta / absMax));
+    // -1 = red, 0 = neutral grey, +1 = green
+    const neg = [220,  60,  60];   // red
+    const mid = [ 60,  72,  92];   // dark slate (matches dark theme)
+    const pos = [ 60, 200, 110];   // green
+    let r, g, b;
+    if (t >= 0) {
+      r = Math.round(mid[0] + (pos[0] - mid[0]) * t);
+      g = Math.round(mid[1] + (pos[1] - mid[1]) * t);
+      b = Math.round(mid[2] + (pos[2] - mid[2]) * t);
+    } else {
+      const k = -t;
+      r = Math.round(mid[0] + (neg[0] - mid[0]) * k);
+      g = Math.round(mid[1] + (neg[1] - mid[1]) * k);
+      b = Math.round(mid[2] + (neg[2] - mid[2]) * k);
+    }
+    return `rgb(${r},${g},${b})`;
+  };
+  const fmtDelta = v => (v > 0 ? "+" : "") + v.toFixed(2);
+
+  html += `<div class="gmal-hm-delta-title">Change from 2016 to 2026 (2026 minus 2016)</div>`;
+  html += `<div class="gmal-hm-wrap"><div class="gmal-hm gmal-hm-delta">`;
+  html += `<div class="gmal-hm-corner">Borough</div>`;
+  for (const [, label] of METRICS) {
+    html += `<div class="gmal-hm-group gmal-hm-group-d">${label}</div>`;
+  }
+  for (const lad of lads) {
+    html += `<div class="gmal-hm-lad">${lad}</div>`;
+    for (const [m] of METRICS) {
+      const d = byLad[lad]["2026"][m] - byLad[lad]["2016"][m];
+      const bg = divergingFor(d, absMaxOf[m]);
+      const intensity = Math.abs(d) / absMaxOf[m];
+      const fg = intensity > 0.55 ? "#0d1117" : "#e6edf3";
+      html += `<div class="gmal-hm-cell" style="background:${bg};color:${fg}" title="${lad} · Δ${m}: ${fmtDelta(d)}">${fmtDelta(d)}</div>`;
+    }
+  }
+  html += `</div>`; // .gmal-hm-delta
+
+  // diverging legend
+  html += `
+    <div class="gmal-hm-legend">
+      <div class="gmal-hm-lgd-block">
+        <div class="gmal-hm-lgd-bar gmal-hm-lgd-bar-d"></div>
+        <div class="gmal-hm-lgd-labels"><span>Worse</span><span>No change</span><span>Better</span></div>
+      </div>
+      <div class="gmal-hm-lgd-note">
+        Each metric uses a symmetric scale around zero, so deeper red marks
+        the largest declines and deeper green the largest gains within that
+        metric. Magnitudes between metrics are not directly comparable.
+      </div>
+    </div>
+  `;
+
+  html += `</div>`; // .gmal-hm-wrap (delta)
+
+  container.innerHTML = html;
+}
+
+function injectGmalHeatmapStyles() {
+  if (document.getElementById("gmal-hm-styles")) return;
+  const s = document.createElement("style");
+  s.id = "gmal-hm-styles";
+  s.textContent = `
+    #gmal-lad-heatmap {
+      padding: 14px !important;
+      display: block !important;
+      min-height: 0 !important;
+      height: auto !important;
+      align-items: stretch !important;
+      justify-content: flex-start !important;
+      text-align: left !important;
+    }
+    .gmal-hm-loading { color: #8b949e; font-size: 12px; padding: 20px 0; text-align: center; }
+
+    .gmal-hm-wrap { font-family: 'Segoe UI', Roboto, sans-serif; overflow-x: auto; }
+    .gmal-hm {
+      display: grid;
+      grid-template-columns: 120px repeat(10, minmax(50px, 1fr));
+      gap: 2px;
+      padding: 4px;
+      border-radius: 8px;
+      background: rgba(255,255,255,.03);
+      min-width: 680px;
+    }
+    .gmal-hm-corner, .gmal-hm-spacer, .gmal-hm-group,
+    .gmal-hm-year, .gmal-hm-lad, .gmal-hm-cell {
+      padding: 6px 4px;
+      font-size: 11px;
+      text-align: center;
+      line-height: 1.15;
+      border-radius: 3px;
+    }
+    .gmal-hm-corner {
+      grid-row: span 2;
+      display: flex; align-items: center;
+      font-weight: 700; color: #8b949e;
+      text-align: left; padding-left: 8px;
+      letter-spacing: .3px;
+    }
+    .gmal-hm-spacer { display: none; }
+    .gmal-hm-group {
+      font-weight: 700; color: #e6edf3;
+      background: rgba(31,111,235,.20);
+      font-size: 10.5px; letter-spacing: .4px;
+      text-transform: uppercase;
+    }
+    .gmal-hm-year {
+      font-size: 10px; color: #8b949e; letter-spacing: .4px;
+      padding-bottom: 4px;
+    }
+    .gmal-hm-lad {
+      text-align: left; padding-left: 8px;
+      font-weight: 600; color: #e6edf3; font-size: 11px;
+      background: rgba(255,255,255,.04);
+      display: flex; align-items: center;
+    }
+    .gmal-hm-cell {
+      font-weight: 600;
+      transition: transform .12s, box-shadow .12s;
+      cursor: default;
+    }
+    .gmal-hm-cell:hover {
+      transform: scale(1.07);
+      box-shadow: 0 0 0 2px rgba(255,255,255,.18);
+      z-index: 2;
+    }
+
+    .gmal-hm-legend {
+      margin-top: 14px;
+      display: flex; align-items: center; gap: 14px;
+      flex-wrap: wrap;
+      font-size: 10.5px; color: #8b949e;
+    }
+    .gmal-hm-lgd-block { display: flex; flex-direction: column; gap: 3px; }
+    .gmal-hm-lgd-bar {
+      width: 140px; height: 10px; border-radius: 999px;
+      background: linear-gradient(to right, rgb(22,34,54), rgb(88,166,255));
+    }
+    .gmal-hm-lgd-labels {
+      display: flex; justify-content: space-between;
+      width: 140px; font-size: 9.5px;
+    }
+    .gmal-hm-lgd-note { flex: 1; min-width: 220px; line-height: 1.45; font-style: italic; }
+
+    .gmal-hm-delta-title {
+      margin: 26px 0 8px;
+      font-size: 11px; font-weight: 700; color: #8b949e;
+      text-transform: uppercase; letter-spacing: .8px;
+    }
+    .gmal-hm.gmal-hm-delta {
+      grid-template-columns: 120px repeat(5, minmax(80px, 1fr));
+      min-width: 540px;
+    }
+    .gmal-hm.gmal-hm-delta .gmal-hm-corner {
+      grid-row: span 1;
+    }
+    .gmal-hm-group-d {
+      background: rgba(255,255,255,.06) !important;
+    }
+    .gmal-hm-lgd-bar-d {
+      background: linear-gradient(to right,
+        rgb(220,60,60) 0%,
+        rgb(60,72,92) 50%,
+        rgb(60,200,110) 100%);
+    }
+    .gmal-hm-lgd-bar-d + .gmal-hm-lgd-labels {
+      width: 140px;
+    }
+
+    @media (max-width: 720px) {
+      .gmal-hm { grid-template-columns: 100px repeat(10, minmax(44px, 1fr)); min-width: 600px; }
+      .gmal-hm.gmal-hm-delta { grid-template-columns: 100px repeat(5, minmax(70px, 1fr)); min-width: 480px; }
+      .gmal-hm-corner, .gmal-hm-lad { font-size: 10px; padding-left: 6px; }
+      .gmal-hm-cell { font-size: 10px; padding: 5px 2px; }
+    }
   `;
   document.head.appendChild(s);
 }
